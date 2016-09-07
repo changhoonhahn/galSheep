@@ -10,17 +10,14 @@ from ChangTools.plotting import prettyplot
 from ChangTools.plotting import prettycolors
 
 
-def Conformity_Primary_SSFR_rperp(cat_dict, primary_id='mpajhu', meanmedian='mean', cen_sat=False, kauff2013=False): 
-    ''' Examine the mean/median SSFR(r_perp) of neighboring galaxies
-    for centrals in different percentile of SSFR
+def Conformity_Primary_SSFR_rperp(cat_dict, primary_id='mpajhu', primary_massbin=[10., 10.5], cen_sat=False): 
+    ''' Calculate the mean and median SSFR(r_perp) of neighboring galaxies
+    of primaries in different SSFR percentiles.
     '''
-    # read conformity catalog 
-    #if cat_dict['name'] == 'tinker':
+    # read conformity catalog based on input catalog dictionary
     concat = clog.ConformCatalog(Mrcut=cat_dict['Mrcut'], 
-            primary_delv=cat_dict['primary_delv'], 
-            primary_rperp=cat_dict['primary_rperp'],  
-            neighbor_delv=cat_dict['neighbor_delv'], 
-            neighbor_rperp=cat_dict['neighbor_rperp'])
+            primary_delv=cat_dict['primary_delv'], primary_rperp=cat_dict['primary_rperp'],  
+            neighbor_delv=cat_dict['neighbor_delv'], neighbor_rperp=cat_dict['neighbor_rperp'])
     catalog = concat.Read() 
 
     # first sort out all primary galaxies 
@@ -33,29 +30,28 @@ def Conformity_Primary_SSFR_rperp(cat_dict, primary_id='mpajhu', meanmedian='mea
         ssfr_primary = catalog['ssfr_tot_mpajhu'][is_primary]
         mass_primary = catalog['mass_tot_mpajhu'][is_primary]
     
-    # get primaries within mass bin 
-    primary_cut = np.where((mass_primary > 10.) & (mass_primary < 10.5) & 
+    # primaries within mass bin with SSFR
+    primary_cut = np.where(
+            (mass_primary > primary_massbin[0]) & (mass_primary < primary_massbin[1]) & 
             (np.isnan(ssfr_primary) == False))[0]
     ssfr_primary_cut = ssfr_primary[primary_cut]
     print len(primary_cut), 'primaries within cut'
-    
+
+    # primary SSFR percentile bins 
     q25, q50, q75, q90 = np.percentile(ssfr_primary_cut, [25, 50, 75, 90])
     #print q25, q50, q75, q90
-
-    # centrals with 0-25th percentile SSFR
     bin_ssfr_0to25 = np.where(ssfr_primary_cut < q25)[0]
     bin_ssfr_25to50 = np.where((ssfr_primary_cut >= q25) & (ssfr_primary_cut < q50))[0]
     bin_ssfr_50to75 = np.where((ssfr_primary_cut >= q50) & (ssfr_primary_cut < q75))[0]
     bin_ssfr_75plus = np.where(ssfr_primary_cut >= q75)[0]
     bin_ssfr_90plus = np.where(ssfr_primary_cut >= q90)[0]
-    bin_ssfr_list = [bin_ssfr_0to25, bin_ssfr_25to50, 
-            bin_ssfr_50to75, bin_ssfr_75plus, bin_ssfr_90plus]
+    bin_ssfr_list = [bin_ssfr_0to25, bin_ssfr_25to50, bin_ssfr_50to75, bin_ssfr_75plus, bin_ssfr_90plus]
     bin_ssfr_label = ['0 - 25\%', '25 - 50\%', '50 - 75\%', '> 75\%', '> 90\%']
-    bin_ssfr_dist = [] 
-    
+    Prim_ssfrbin_Neigh_ssfr = []
     rperp_bins = np.arange(0., 4.5, 0.5)
     
     for bin_ssfr_cut in bin_ssfr_list: 
+        # extra cuts for primaries 
         if cen_sat == False: 
             keep = range(len(bin_ssfr_cut))
         elif cen_sat == 'centrals': 
@@ -76,33 +72,54 @@ def Conformity_Primary_SSFR_rperp(cat_dict, primary_id='mpajhu', meanmedian='mea
         elif primary_id == 'mpajhu': 
             neigh_ssfr = catalog['ssfr_fib_mpajhu'][neigh_inbin]
         
-        # calculate the mean/median SSFR in bins of r_perp 
-        ssfr_in_rperpbins = np.zeros(len(rperp_bins)-1)
+        # calculate the mean and median of *neighbor* SSFR in bins of r_perp 
+        ssfr_in_rperpbins = [] 
         for i_rperp in range(len(rperp_bins)-1): 
             bin_ssfr_rperp = np.where( 
                     (neigh_rperp > rperp_bins[i_rperp]) &  
                     (neigh_rperp <= rperp_bins[i_rperp+1]) & 
                     (np.isnan(neigh_ssfr) == False))
+            
+            ssfr_in_rperpbins.append(neigh_ssfr[bin_ssfr_rperp])
 
-            if meanmedian == 'mean': 
-                ssfr_in_rperpbins[i_rperp] = np.mean(neigh_ssfr[bin_ssfr_rperp])
-            elif meanmedian == 'median': 
-                ssfr_in_rperpbins[i_rperp] = np.median(neigh_ssfr[bin_ssfr_rperp])
-            else: 
-                raise ValueError
-        bin_ssfr_dist.append(ssfr_in_rperpbins)
-    
-    prettyplot()
-    pretty_colors = prettycolors()
+        Prim_ssfrbin_Neigh_ssfr.append(ssfr_in_rperpbins)
+
+    output_dict = {
+            'ConCat_spec': concat._FileSpec(), 
+            'ssfr_q25': q25, 'ssfr_q50': q50, 'ssfr_q75': q75, 'ssfr_q90': q90,
+            'Primary_ssfr_percentile_labels': bin_ssfr_label,
+            'rperp_bins': rperp_bins, 
+            'percentile_Neigh_ssfr': Prim_ssfrbin_Neigh_ssfr 
+            }
+    return output_dict 
+
+
+def PlotConformity_Primary_SSFR_rperp(ssfr_prop, cat_dict, 
+        primary_id='mpajhu', primary_massbin=[10., 10.5], 
+        cen_sat=False, kauff2013=False):
+    ''' Plot the Conformity measurement from the Conformity_Primary_SSFR_rperp 
+    function
+    '''
+    results = Conformity_Primary_SSFR_rperp(cat_dict, 
+            primary_id=primary_id, 
+            primary_massbin=primary_massbin, 
+            cen_sat=cen_sat)
+    concat_file_spec = results['ConCat_spec']
+    rperp_bins = results['rperp_bins']
+    bin_ssfr_label = results['Primary_ssfr_percentile_labels']
+    Prim_ssfrbin_Neigh_ssfr = results['percentile_Neigh_ssfr']
+
     fig = plt.figure()
     sub = fig.add_subplot(111)
-    for i_ssfr, ssfr_dist in enumerate(bin_ssfr_dist): 
-        if i_ssfr in [1,2]: 
-            lstyle = '--' 
-        else: 
-            lstyle = '-'
-        sub.plot(0.5*(rperp_bins[:-1]+rperp_bins[1:]), ssfr_dist, 
-                c=pretty_colors[i_ssfr], lw=3, ls=lstyle, label=bin_ssfr_label[i_ssfr]) 
+    prettyplot()
+    pretty_colors = prettycolors()
+    for i_ssfr, ssfrs_rperp in enumerate(Prim_ssfrbin_Neigh_ssfr):
+        if ssfr_prop == 'mean':   
+            sub.plot(0.5*(rperp_bins[:-1]+rperp_bins[1:]), [np.mean(ssfrs) for ssfrs in ssfrs_rperp], 
+                    c=pretty_colors[i_ssfr], lw=3, ls='-')#, label=bin_ssfr_label[i_ssfr]) 
+        elif ssfr_prop == 'median': 
+            sub.plot(0.5*(rperp_bins[:-1]+rperp_bins[1:]), [np.median(ssfrs) for ssfrs in ssfrs_rperp], 
+                    c=pretty_colors[i_ssfr], lw=3, ls='-')#, label=bin_ssfr_label[i_ssfr]) 
         
         # include Kauffmann et al. (2013) data points
         if kauff2013:
@@ -114,31 +131,31 @@ def Conformity_Primary_SSFR_rperp(cat_dict, primary_id='mpajhu', meanmedian='mea
             sub.scatter(kauff_rperp, kauff_ssfr, c=pretty_colors[i_ssfr], lw=0) 
             sub.plot(kauff_rperp, kauff_ssfr, c=pretty_colors[i_ssfr], lw=1, ls='--') 
     
-    if primary_id == 'vagc': 
-        sub.set_title(r"$10.0 < \mathtt{log}\mathcal{M}^\mathtt{(vagc)}_* < 10.5$ ", 
-                fontsize=25) 
-    elif primary_id == 'mpajhu': 
-        sub.set_title(
-                r"$10.0 < \mathtt{log}\mathcal{M}^\mathtt{(tot)}_* < 10.5$ ", 
-                fontsize=25) 
+    #if primary_id == 'vagc': 
+    #    sub.set_title(r"$10.0 < \mathtt{log}\mathcal{M}^\mathtt{(vagc)}_* < 10.5$ ", 
+    #            fontsize=25) 
+    #elif primary_id == 'mpajhu': 
+    #    sub.set_title(
+    #            r"$10.0 < \mathtt{log}\mathcal{M}^\mathtt{(tot)}_* < 10.5$ ", 
+    #            fontsize=25) 
     # axes
     sub.set_xlim([0, 4]) 
     sub.set_xticks([0, 1, 2, 3, 4]) 
     sub.set_ylim([-12.25, -9.75])
     sub.set_yticks([-12., -11., -10.]) 
-    if primary_id == 'vagc': 
-        sub.text(0.1, -11.9, r'Ranked in $\mathtt{log}\mathtt{SSFR}$', fontsize=20) 
-    elif primary_id == 'mpajhu': 
-        sub.text(0.1, -11.9, r'Ranked in $\mathtt{log}\,\mathtt{SSFR^{(tot)}}$', fontsize=20) 
+    #if primary_id == 'vagc': 
+    #    sub.text(0.1, -11.9, r'Ranked in $\mathtt{log}\mathtt{SSFR}$', fontsize=20) 
+    #elif primary_id == 'mpajhu': 
+    #    sub.text(0.1, -11.9, r'Ranked in $\mathtt{log}\,\mathtt{SSFR^{(tot)}}$', fontsize=20) 
     sub.minorticks_on() 
 
-    sub.set_xlabel(r'$\mathtt{R_{\perp}}$ [Mpc]', fontsize=25) 
-    if primary_id == 'vagc': 
-        sub.set_ylabel(meanmedian+r' log SSFR [$\mathtt{yr}^{-1}$]', fontsize=25) 
-    elif primary_id == 'mpajhu': 
-        sub.set_ylabel(meanmedian+r' log $\mathtt{SSFR^{(fib)}}$ [$\mathtt{yr}^{-1}$]', 
-                fontsize=25) 
-    sub.legend(loc='lower right', handletextpad=0.1) 
+    #sub.set_xlabel(r'$\mathtt{R_{\perp}}$ [Mpc]', fontsize=25) 
+    #if primary_id == 'vagc': 
+    #    sub.set_ylabel(ssfr_prop+r' log SSFR [$\mathtt{yr}^{-1}$]', fontsize=25) 
+    #elif primary_id == 'mpajhu': 
+    #    sub.set_ylabel(ssfr_prop+r' log $\mathtt{SSFR^{(fib)}}$ [$\mathtt{yr}^{-1}$]', 
+    #            fontsize=25) 
+    #sub.legend(loc='lower right', handletextpad=0.1) 
 
     if kauff2013:
         str_kauff = '.kauff'
@@ -154,9 +171,10 @@ def Conformity_Primary_SSFR_rperp(cat_dict, primary_id='mpajhu', meanmedian='mea
         str_onlycentrals = '.Satellites'
     
     fig_file = ''.join([UT.dir_fig(), 'Conformity.SSFR_rprep', str_onlycentrals, 
-        concat._FileSpec(), '.', primary_id.upper(), '.', meanmedian, str_kauff, '.png']) 
-    
-    fig.savefig(fig_file, bbox_inches='tight') 
+        concat_file_spec, '.', primary_id.upper(), '.', ssfr_prop, str_kauff, '.png']) 
+    print fig_file 
+    #plt.show() 
+    fig.savefig('testing.png')#, bbox_inches='tight') 
     plt.close()
     return None 
 
@@ -512,6 +530,18 @@ def PrimaryCentral_match(cat_dict, kauff_shenanigans=False):
 
 
 if __name__=='__main__': 
+
+    PlotConformity_Primary_SSFR_rperp('median', {'name': 'tinker', 'Mrcut':18, 
+        'primary_delv': 500., 'primary_rperp': 0.5, 
+        'neighbor_delv': 500., 'neighbor_rperp': 5.}, 
+        primary_id='mpajhu', cen_sat=False, kauff2013=True)
+
+    PlotConformity_Primary_SSFR_rperp('median', {'name': 'tinker', 'Mrcut':18, 
+        'primary_delv': 500., 'primary_rperp': 0.5, 
+        'neighbor_delv': 500., 'neighbor_rperp': 5.}, 
+        primary_id='vagc', cen_sat=False, kauff2013=True)
+
+    '''
     for delv in [500.]:#, 1000., 1500., 2000.]:
         Centrals_Pssfr_Rperp_bin({'name': 'tinker', 'Mrcut':18, 
                 'primary_delv': 500., 'primary_rperp': 0.5, 
@@ -521,13 +551,9 @@ if __name__=='__main__':
                 'primary_delv': 500., 'primary_rperp': 0.5, 
                 'neighbor_delv': delv, 'neighbor_rperp': 5.}, 
                 primary_id='vagc', remove_neighbor='all_satellites')
-        #for mm in ['mean', 'median']: 
-        #    Conformity_Centrals_SSFR_rperp({'name': 'tinker', 'Mrcut':18, 
-        #        'primary_delv': 500., 'primary_rperp': 0.5, 
-        #        'neighbor_delv': delv, 'neighbor_rperp': 5.}, 
-        #        primary_id='vagc', meanmedian=mm, remove_neighbor='all_satellites')
-                        
-                #Conformity_Primary_SSFR_rperp({'name': 'tinker', 'Mrcut':18, 
-                #    'primary_delv': 500., 'primary_rperp': 0.5, 
-                #    'neighbor_delv': delv, 'neighbor_rperp': 5.}, 
-                #    primary_id='mpajhu', meanmedian=mm, cen_sat=censat, kauff2013=False)
+        for mm in ['mean', 'median']: 
+            Conformity_Centrals_SSFR_rperp({'name': 'tinker', 'Mrcut':18, 
+                'primary_delv': 500., 'primary_rperp': 0.5, 
+                'neighbor_delv': delv, 'neighbor_rperp': 5.}, 
+                primary_id='vagc', meanmedian=mm, remove_neighbor='all_satellites')
+    '''

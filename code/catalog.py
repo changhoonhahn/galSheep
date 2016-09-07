@@ -16,7 +16,6 @@ import util as UT
 from ChangTools.fitstables import mrdfits
 
 
-
 class ConformCatalog(object):
     def __init__(self, Mrcut=18, 
             primary_delv=500., primary_rperp=0.5, 
@@ -465,7 +464,7 @@ def IdentifyNeighbors(catalog, del_v_cut=500., r_perp_cut=5., mpajhu=False):
 
 
 
-'''
+"""
     def Jackknife_TinkerCatalog(n_jack, Mrcut=18): 
         ''' Jackknife catalogs of Tinker et al. (2011) group catalog combined into a 
         volume-limited galaxy catalog and return a dictionary with
@@ -491,4 +490,4 @@ def IdentifyNeighbors(catalog, del_v_cut=500., r_perp_cut=5., mpajhu=False):
         #tinker_cat['ra'].min(), tinker_cat['ra'].max()
         #for col in tinker_cat.keys(): 
         return tinker_cat 
-'''
+"""
