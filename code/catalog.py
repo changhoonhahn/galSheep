@@ -1,3 +1,8 @@
+'''
+
+Construct catalogs for conformity measurements 
+
+'''
 import numpy as np 
 import h5py
 import pickle
@@ -10,12 +15,17 @@ from pydl.pydlutils.spheregroup import spherematch
 import util as UT
 from ChangTools.fitstables import mrdfits
 
+
+
 class ConformCatalog(object):
     def __init__(self, Mrcut=18, 
             primary_delv=500., primary_rperp=0.5, 
             neighbor_delv=1000., neighbor_rperp=5.):
-        self.Mrcut = Mrcut
-        self.M_cut = Tinker_Masscut(self.Mrcut) 
+        ''' Galaxy Catalog with primaries and secondaries identified 
+        for conformity measurements
+        '''
+        self.Mrcut = Mrcut      # absolute magnitude cutoff in Tinker et al. (2011) sample
+        self.M_cut = Tinker_Masscut(self.Mrcut) # mass cut
     
         # Delta v and r_perp for primary identification
         self.primary_delv = primary_delv
@@ -26,12 +36,22 @@ class ConformCatalog(object):
         self.neighbor_rperp = neighbor_rperp
 
     def Read(self): 
+        ''' Read in the conformity catalog
+        '''
         catalog = pickle.load(open(self.File(), 'rb'))
         return catalog
 
     def Build(self): 
-        #catalog = TinkerCatalog(Mrcut=self.Mrcut)
+        ''' Build conformity catalog. 
+
+        1. identify primaries using VAGC values
+        2. identify primaries using MPA-JHU values 
+        3. identify neighbors of VAGC primaries 
+        4. identify neighbors of MPA-JHU primaries 
+        5. save to pickle file
+        '''
         catalog = MPAJHU_TinkerCatalog(Mrcut=self.Mrcut)
+
         # identify primaries based on VAGC values
         catalog = IdentifyPrimaries(catalog, 
                 del_v_cut=self.primary_delv, r_perp_cut=self.primary_rperp, 
@@ -53,6 +73,8 @@ class ConformCatalog(object):
         return None 
 
     def File(self):  
+        ''' Conformity catalog file name 
+        '''
         conform_file = ''.join([
             UT.dir_dat(), 'conform_catalog/',
             'MPAJHU_TinkerGroupCat.Mr', str(self.Mrcut), '.Mass', str(self.M_cut), 
@@ -69,6 +91,18 @@ class ConformCatalog(object):
             '_delv', str(self.neighbor_delv), 
             '_rperp', str(self.neighbor_rperp)])
         return spec_str
+
+
+def Tinker_Masscut(Mrcut): 
+    # given Mr cut return the matching M_cut 
+    if Mrcut == 18: 
+        return 9.4
+    elif Mrcut == 19:
+        return 9.8
+    elif Mrcut == 20: 
+        return 10.2 
+    else: 
+        raise ValueError
 
 
 def TinkerCatalog(Mrcut=18): 
@@ -91,20 +125,8 @@ def TinkerCatalog(Mrcut=18):
     return catalog
 
 
-def Tinker_Masscut(Mrcut): 
-    # given Mr cut return the matching M_cut 
-    if Mrcut == 18: 
-        return 9.4
-    elif Mrcut == 19:
-        return 9.8
-    elif Mrcut == 20: 
-        return 10.2 
-    else: 
-        raise ValueError
-
-
 def Build_TinkerCatalog(Mrcut=18): 
-    ''' Process the group catalog data into a more python friendly format
+    ''' Preprocess the group catalog data into a more python friendly format
     with appropriate *little h* corrections!
     '''
     h = 0.7
@@ -245,33 +267,6 @@ def Build_MPAJHU_TinkerCatalog(Mrcut=18):
     return None
 
 
-def Jackknife_TinkerCatalog(n_jack, Mrcut=18): 
-    ''' Jackknife catalogs of Tinker et al. (2011) group catalog combined into a 
-    volume-limited galaxy catalog and return a dictionary with
-    all the value. 
-    '''
-    M_cut = Tinker_Masscut(Mrcut)
-    # read in h5py file 
-    tinker_file = lambda censat: ''.join([UT.dir_dat(), 'tinker2011catalogs/',
-                'GroupCat.Mr', str(Mrcut), '.Mass', str(M_cut), '.D360.', censat, '.hdf5']) 
-    tinker_central = h5py.File(tinker_file('central'), 'r')
-    tinker_satellite = h5py.File(tinker_file('satellite'), 'r')
-
-    # now combine the two into a dictionary
-    if tinker_central['data'].keys() != tinker_satellite['data'].keys(): 
-        # make sure that they have the same columns
-        raise ValueError
-    tinker_cat = {}
-    for col in tinker_central['data'].keys(): 
-        tinker_cat[col] = np.concatenate(
-                [tinker_central['data/'+col].value, tinker_satellite['data/'+col].value]
-                )
-    #tinker_cat['ra'].min(), tinker_cat['ra'].max()
-    #tinker_cat['ra'].min(), tinker_cat['ra'].max()
-    #for col in tinker_cat.keys(): 
-    return tinker_cat 
-
-
 def IdentifyPrimaries(catalog, del_v_cut=500., r_perp_cut=0.5, mpajhu=False): 
     ''' Identify the primary galaxies in the input catalog dictionary using
     the following steps: 
@@ -375,7 +370,6 @@ def IdentifyPrimaries(catalog, del_v_cut=500., r_perp_cut=0.5, mpajhu=False):
         catalog['primary_mpajhu'] = np.array(isprimary)
 
     print 'Identified ', np.sum(isprimary), ' primaries' 
-
     return catalog 
 
 
@@ -468,3 +462,33 @@ def IdentifyNeighbors(catalog, del_v_cut=500., r_perp_cut=5., mpajhu=False):
         catalog['neighbor_indices_mpajhu'] = neigh_indices
 
     return catalog 
+
+
+
+'''
+    def Jackknife_TinkerCatalog(n_jack, Mrcut=18): 
+        ''' Jackknife catalogs of Tinker et al. (2011) group catalog combined into a 
+        volume-limited galaxy catalog and return a dictionary with
+        all the value. 
+        '''
+        M_cut = Tinker_Masscut(Mrcut)
+        # read in h5py file 
+        tinker_file = lambda censat: ''.join([UT.dir_dat(), 'tinker2011catalogs/',
+                    'GroupCat.Mr', str(Mrcut), '.Mass', str(M_cut), '.D360.', censat, '.hdf5']) 
+        tinker_central = h5py.File(tinker_file('central'), 'r')
+        tinker_satellite = h5py.File(tinker_file('satellite'), 'r')
+
+        # now combine the two into a dictionary
+        if tinker_central['data'].keys() != tinker_satellite['data'].keys(): 
+            # make sure that they have the same columns
+            raise ValueError
+        tinker_cat = {}
+        for col in tinker_central['data'].keys(): 
+            tinker_cat[col] = np.concatenate(
+                    [tinker_central['data/'+col].value, tinker_satellite['data/'+col].value]
+                    )
+        #tinker_cat['ra'].min(), tinker_cat['ra'].max()
+        #tinker_cat['ra'].min(), tinker_cat['ra'].max()
+        #for col in tinker_cat.keys(): 
+        return tinker_cat 
+'''

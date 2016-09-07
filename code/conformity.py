@@ -14,13 +14,13 @@ def Conformity_Primary_SSFR_rperp(cat_dict, primary_id='mpajhu', meanmedian='mea
     ''' Examine the mean/median SSFR(r_perp) of neighboring galaxies
     for centrals in different percentile of SSFR
     '''
-    # read in conformity catalog 
-    if cat_dict['name'] == 'tinker':
-        concat = clog.ConformCatalog(Mrcut=cat_dict['Mrcut'], 
-                primary_delv=cat_dict['primary_delv'], 
-                primary_rperp=cat_dict['primary_rperp'],  
-                neighbor_delv=cat_dict['neighbor_delv'], 
-                neighbor_rperp=cat_dict['neighbor_rperp'])
+    # read conformity catalog 
+    #if cat_dict['name'] == 'tinker':
+    concat = clog.ConformCatalog(Mrcut=cat_dict['Mrcut'], 
+            primary_delv=cat_dict['primary_delv'], 
+            primary_rperp=cat_dict['primary_rperp'],  
+            neighbor_delv=cat_dict['neighbor_delv'], 
+            neighbor_rperp=cat_dict['neighbor_rperp'])
     catalog = concat.Read() 
 
     # first sort out all primary galaxies 
