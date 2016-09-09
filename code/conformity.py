@@ -331,7 +331,10 @@ def PlotConformity_Primary_Pssfr_Rperp_bin(cat_dict,
                 fontsize=20) 
         # axes
         sub.set_xlim([ssfr_min, ssfr_max]) 
-        sub.set_xticks([-13, -12, -11, -10]) 
+        if i_rp < len(Pssfr_primary_bin[0])-1: 
+            sub.set_xticks([-13, -12, -11, -10]) 
+        else: 
+            sub.set_xticks([-13, -12, -11, -10, -9]) 
         sub.set_ylim([0., 0.8]) 
         sub.set_yticks([0., 0.2, 0.4, 0.6, 0.8]) 
         sub.minorticks_on() 
@@ -353,10 +356,10 @@ def PlotConformity_Primary_Pssfr_Rperp_bin(cat_dict,
         rm_str = '' 
     elif remove_neighbor == 'all_satellites': 
         rm_str = '.allsatellites_removed'
-        sub.text(-9.5, 0.7, 'All Satellites Removed', fontsize=15) 
+        sub.text(-12.5, 0.7, 'All Satellites Removed', fontsize=15) 
     elif remove_neighbor == 'cent_satellites':
         rm_str = '.centsatellites_removed'
-        sub.text(-9.5, 1.5, 'Satellites of Primary Removed', fontsize=15) 
+        sub.text(-12.5, 1.5, 'Satellites of Primary Removed', fontsize=15) 
     else: 
         raise ValueError
 
