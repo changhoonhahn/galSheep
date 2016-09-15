@@ -527,7 +527,7 @@ def PlotConformity_Primary_fsat_Rperp_bin(gal_prop, cat_dict,
             percentiles=[25, 50, 75, 90]) 
     bin_ssfr_label = ['0 - 25\%', '25 - 50\%', '50 - 75\%', '> 75\%', '> 90\%']
     
-    rperp_bins = np.arange(0., 5., 1.)
+    rperp_bins = np.arange(0., 4.5, 0.5)
     fsat_primary_bin = [] 
     
     for bin_ssfr_cut in bin_ssfr_list: 
@@ -600,6 +600,135 @@ def PlotConformity_Primary_fsat_Rperp_bin(gal_prop, cat_dict,
     return None 
 
 
+def PlotConformity_Primary_meanM_Rperp_bin(gal_prop, cat_dict, 
+        primary_id='mpajhu', primary_massbin=[10., 10.5], cen_sat=False): 
+    ''' Divide the primary galaxies into bins of SSFR and then 
+    examine the SSFR of their neighboring galaxies. More specifically
+    we look at the SSFR distirubiton within a r_perp bin. 
+    '''
+    # read in conformity catalog 
+    concat = clog.ConformCatalog(Mrcut=cat_dict['Mrcut'], 
+            primary_delv=cat_dict['primary_delv'], 
+            primary_rperp=cat_dict['primary_rperp'],  
+            neighbor_delv=cat_dict['neighbor_delv'], 
+            neighbor_rperp=cat_dict['neighbor_rperp'])
+    catalog = concat.Read() 
+
+    # first sort out all primary galaxies 
+    is_primary = np.where(catalog['primary_'+primary_id] == 1)[0]
+    if primary_id == 'vagc': 
+        ssfr_primary = catalog['ssfr'][is_primary]
+        mass_primary = catalog['mass'][is_primary]
+        mass_min, mass_max = 9., 12. 
+        ssfr_min, ssfr_max = -13.25, -9.25
+    elif primary_id == 'mpajhu': 
+        ssfr_primary = catalog['ssfr_tot_mpajhu'][is_primary]
+        mass_primary = catalog['mass_tot_mpajhu'][is_primary]
+        mass_min, mass_max = 9., 12. 
+        ssfr_min, ssfr_max = -13., -8.75
+
+    if cen_sat == False:   # all primaries within mass bin with SSFR
+        primary_cut = np.where(
+                (mass_primary > primary_massbin[0]) & (mass_primary < primary_massbin[1]) & 
+                (np.isnan(ssfr_primary) == False))[0]
+    elif cen_sat == 'centrals':  # primaries within mass bin with SSFR that are *centrals*
+        primary_cut = np.where(
+                (mass_primary > primary_massbin[0]) & (mass_primary < primary_massbin[1]) & 
+                (np.isnan(ssfr_primary) == False) & (catalog['p_sat'][is_primary] <= 0.5)
+                )[0]
+    elif cen_sat == 'pure_centrals':  # primaries within mass bin with SSFR that are pure *centrals*
+        primary_cut = np.where(
+                (mass_primary > primary_massbin[0]) & (mass_primary < primary_massbin[1]) & 
+                (np.isnan(ssfr_primary) == False) & (catalog['p_sat'][is_primary] <= 0.01)
+                )[0]
+    elif cen_sat == 'satellites': # primaries within mass bin with SSFR that are *satellites*
+        primary_cut = np.where(
+                (mass_primary > primary_massbin[0]) & (mass_primary < primary_massbin[1]) & 
+                (np.isnan(ssfr_primary) == False) & (catalog['p_sat'][is_primary] > 0.5)
+                )[0]
+    else: 
+        raise ValueError
+    
+    ssfr_primary_cut = ssfr_primary[primary_cut]
+    print len(primary_cut), 'primaries within cut'
+    
+    bin_ssfr_list = PrimarySSFR_percentile_bins(ssfr_primary_cut, 
+            percentiles=[25, 50, 75, 90]) 
+    bin_ssfr_label = ['0 - 25\%', '25 - 50\%', '50 - 75\%', '> 75\%', '> 90\%']
+    
+    rperp_bins = np.arange(0., 4.5, 0.5)
+    meanM_primary_bin = [] 
+    
+    for bin_ssfr_cut in bin_ssfr_list: 
+        # get SSFR and r_perp of the neighbors of the primaries
+        # in each of the SSFR bins. 
+        neigh_mass, neigh_ssfr, neigh_rperp, neigh_psat = [], [], [], []
+        for ip in primary_cut[bin_ssfr_cut]: 
+            cen_index = is_primary[ip]
+            if cen_sat in ['central', 'pure_central']: 
+                if not catalog['p_sat'][cen_index] <= 0.5:  # has to be central 
+                    raise ValueError
+
+            neigh_indices = np.array(catalog['neighbor_indices_'+primary_id][ip]).astype('int') 
+            neigh_rperp.append(np.array(catalog['neighbor_rperp_'+primary_id][ip]))
+
+            if primary_id == 'vagc': 
+                neigh_ssfr.append(catalog['ssfr'][neigh_indices]) 
+                neigh_mass.append(catalog['mass'][neigh_indices]) 
+            elif primary_id == 'mpajhu': 
+                neigh_ssfr.append(catalog['ssfr_fib_mpajhu'][neigh_indices])
+                neigh_mass.append(catalog['mass_tot_mpajhu'][neigh_indices]) #neighbor *total* mass 
+            neigh_psat.append(catalog['p_sat'][neigh_indices]) #neighbor p_sat 
+
+        neigh_rperp = np.concatenate(neigh_rperp)
+        neigh_ssfr = np.concatenate(neigh_ssfr) 
+        neigh_mass = np.concatenate(neigh_mass) 
+        neigh_psat = np.concatenate(neigh_psat) 
+
+        # calculate f_sat of the neighbors in bins of r_perp 
+        meanM_in_rperpbins = []  
+        for i_rperp in range(len(rperp_bins)-1): 
+            bin_prop_rperp = np.where( 
+                    (neigh_rperp > rperp_bins[i_rperp]) &  
+                    (neigh_rperp <= rperp_bins[i_rperp+1]) & 
+                    (np.isnan(neigh_mass) == False))
+            meanM = np.mean(neigh_mass[bin_prop_rperp])
+            meanM_in_rperpbins.append(meanM) 
+        meanM_primary_bin.append(meanM_in_rperpbins)
+    
+    # plotting 
+    prettyplot()
+    pretty_colors = prettycolors()
+    fig = plt.figure()
+    sub = fig.add_subplot(111)
+    for i_pb in range(len(meanM_primary_bin)):              # primary bin 
+        sub.plot(0.5*(rperp_bins[:-1]+rperp_bins[1:]), meanM_primary_bin[i_pb], 
+                c=pretty_colors[i_pb], lw=2)
+    # axes
+    sub.set_xlim([0., 4.]) 
+    sub.set_xticks([0,1,2,3,4])
+    sub.set_ylim([10.0, 10.5]) 
+    sub.set_yticks([10., 10.2, 10.4]) 
+    sub.minorticks_on() 
+    sub.set_xlabel(r'$\mathtt{R_{\perp}}$ [Mpc]', fontsize=25) 
+    sub.set_ylabel(r'mean log($\mathcal{M_{*}} [\mathtt{M}_\odot] $)', fontsize=25) 
+    
+    cen_sat_str = '.AllPrimary'
+    if cen_sat == 'centrals': 
+        cen_sat_str = '.CentralPrimary'
+    elif cen_sat == 'pure_centrals': 
+        cen_sat_str = '.PureCentralPrimary'
+    elif cen_sat == 'satellites': 
+        cen_sat_str = '.SatellitePrimary'
+    fig_file = ''.join([UT.dir_fig(), 
+        'Conformity', cen_sat_str ,'.meanM_rprep_bin', concat._FileSpec(), '.', 
+        primary_id.upper(), '.png']) 
+    
+    fig.savefig(fig_file, bbox_inches='tight') 
+    plt.close()
+    return None 
+
+
 def PrimaryCentral_match(cat_dict, kauff_shenanigans=False): 
     ''' Check what fraction of the Kauffmann et al. (2013) isolation criteria 
     primaries are classified as 'centrals' in Tinker et al. (2011) group catalog. 
@@ -655,7 +784,7 @@ def PrimarySSFR_percentile_bins(ssfrs, percentiles=[25, 50, 75, 90]):
 
 if __name__=='__main__': 
 
-    PlotConformity_Primary_fsat_Rperp_bin('ssfr', {'name': 'tinker', 'Mrcut':18, 
+    PlotConformity_Primary_meanM_Rperp_bin('ssfr', {'name': 'tinker', 'Mrcut':18, 
         'primary_delv': 500., 'primary_rperp': 0.5, 
         'neighbor_delv': 500., 'neighbor_rperp': 5.}, 
         primary_id='mpajhu', cen_sat='pure_centrals')

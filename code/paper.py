@@ -149,7 +149,10 @@ def Fig_NeighborSSFR_in_PurePrimarybins(cat_dict, primary_massbin=[10., 10.5]):
             (mass_primary > primary_massbin[0]) & (mass_primary < primary_massbin[1]) & 
             (np.isnan(ssfr_primary) == False))[0]
     ssfr_primary_cut = ssfr_primary[primary_cut]
+    mass_primary_cut = mass_primary[primary_cut]
     print len(primary_cut), 'primaries within cut'
+    print 'mean M* of pure central primaries ', np.log10(np.mean(10.**mass_primary_cut))
+    print 'median M* of pure central primaries ', np.median(mass_primary_cut)
     # PURE central primaries within mass bin with SSFR 
     pure_primary_cut = np.where(
             (mass_primary > primary_massbin[0]) & (mass_primary < primary_massbin[1]) & 
@@ -168,6 +171,10 @@ def Fig_NeighborSSFR_in_PurePrimarybins(cat_dict, primary_massbin=[10., 10.5]):
     NeighSSFR_primarybin, NeighSSFR_pureprimarybin = [], []
 
     for i_bin, bin_ssfr_cut in enumerate(bin_ssfr_list): 
+        print 'SSFR percentile - ', bin_ssfr_label[i_bin]
+        print 'mean = ', np.log10(np.mean(10**mass_primary_cut[bin_ssfr_cut]))
+        print 'median = ', np.median(mass_primary_cut[bin_ssfr_cut])
+
         neigh_inbin = np.concatenate(    # neighbor in primary bin 
                 [np.array(catalog['neighbor_indices_mpajhu'][i]) 
                     for i in primary_cut[bin_ssfr_cut]]).astype('int') 
@@ -497,14 +504,14 @@ if __name__=='__main__':
     #    'primary_delv': 500., 'primary_rperp': 0.5, 
     #    'neighbor_delv': 500., 'neighbor_rperp': 5.},
     #    primary_massbin=[10., 10.5])
-    #Fig_NeighborSSFR_in_PurePrimarybins({'name': 'tinker', 'Mrcut':18, 
-    #    'primary_delv': 500., 'primary_rperp': 0.5, 
-    #    'neighbor_delv': 500., 'neighbor_rperp': 5.},
-    #    primary_massbin=[10., 10.5])
-    Fig_CentralMassbinNeighborSSFR_in_PurePrimarybins({'name': 'tinker', 'Mrcut':18, 
+    Fig_NeighborSSFR_in_PurePrimarybins({'name': 'tinker', 'Mrcut':18, 
         'primary_delv': 500., 'primary_rperp': 0.5, 
         'neighbor_delv': 500., 'neighbor_rperp': 5.},
         primary_massbin=[10., 10.5])
+    #Fig_CentralMassbinNeighborSSFR_in_PurePrimarybins({'name': 'tinker', 'Mrcut':18, 
+    #    'primary_delv': 500., 'primary_rperp': 0.5, 
+    #    'neighbor_delv': 500., 'neighbor_rperp': 5.},
+    #    primary_massbin=[10., 10.5])
 
     #Fig_CentralNeighborSSFR_in_PurePrimarybins({'name': 'tinker', 'Mrcut':18, 
     #    'primary_delv': 500., 'primary_rperp': 0.5, 
