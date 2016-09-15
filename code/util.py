@@ -36,3 +36,4 @@ def radecz_to_xyz(ra, dec, red, H0=70., Om0=0.3):
     z = r * np.cos(theta / DRADEG)
 
     return np.array([x, y, z]).T
+
