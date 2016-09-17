@@ -34,6 +34,21 @@ class ConformCatalog(object):
         self.neighbor_delv = neighbor_delv
         self.neighbor_rperp = neighbor_rperp
 
+    def Jackknife(self, n_jack, RADec_bins=[5,5]): 
+        ''' Remove n_jack jackknife field from the catalog. 
+
+        Parameters
+        ----------
+        * n_jack : int
+            jackknife field number 
+        * RADec_bins : list
+            2 element list that specifies the total number of RA and 
+            Dec bins.
+        '''
+        if n_jack > (RADec_bins[0] * RADec_bins[1]): 
+            raise ValueError
+
+
     def Read(self): 
         ''' Read in the conformity catalog
         '''

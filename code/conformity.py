@@ -23,26 +23,31 @@ def NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=np.arange(0., 4.5, 0.5),
     catalog = concat.Read() 
 
     # SSFR binning of primaries
-    primary_SSFRbin_limits, primary_SSFRbin_list, primary_SSFRbin_neigh_indices, primary_SSFRbin_neigh_rperp = \
-            PrimaryIndices_SSFRbins(catalog, percentiles=[25, 50, 75, 90], 
-                    pipeline=primary_pipeline, 
-                    group_id=primary_groupid, 
-                    massbin=primary_massbin)
+    cut_primary, is_primary, cut_tot = PrimaryIndices(catalog, 
+                    pipeline=primary_pipeline, group_id=primary_groupid, massbin=primary_massbin)
+    
+    # SSFR of primaries after final cut
+    if primary_pipeline == 'vagc': 
+        ssfr_cut_primary = catalog['ssfr'][cut_primary]
+    elif primary_pipeline == 'mpajhu': 
+        ssfr_cut_primary = catalog['ssfr_tot_mpajhu'][cut_primary]
+    
+    primary_SSFRbin_limits, primary_SSFRbin_list = SSFR_percentilebins(ssfr_cut_primary, 
+            percentiles=[25, 50, 75, 90])
     primary_SSFRbin_label = ['0 - 25\%', '25 - 50\%', '50 - 75\%', '> 75\%', '> 90\%'] 
     
     # for each of the primary SSFR bins 
     neighSSFR_rperp_primarybins = []
     for i_ssfrbin, primary_SSFRbin in enumerate(primary_SSFRbin_list): 
         # neighbor indices of primary galaxies within this SSFR bin  
-        neigh_inbin = primary_SSFRbin_neigh_indices[i_ssfrbin]
+        neigh_inbin = np.concatenate(    
+                [np.array(catalog['neighbor_indices_'+neighbor_pipeline][i]) 
+                    for i in cut_tot[primary_SSFRbin]]).astype('int') 
         # neighbor r_perp of primary galaxies within this SSFR bin  
-        neigh_rperp = primary_SSFRbin_neigh_rperp[i_ssfrbin]
-        #neigh_inbin = np.concatenate(
-        #        [np.array(catalog['neighbor_indices_'+primary_pipeline][i]) 
-        #            for i in primary_SSFRbin]).astype('int') 
-        #neigh_rperp = np.concatenate(
-        #        [np.array(catalog['neighbor_rperp_'+primary_pipeline][i]) 
-        #            for i in primary_SSFRbin])
+        neigh_rperp = np.concatenate(    
+                [np.array(catalog['neighbor_rperp_'+neighbor_pipeline][i]) 
+                    for i in cut_tot[primary_SSFRbin]])
+
         if neighbor_pipeline == 'vagc': 
             neigh_ssfr = catalog['ssfr'][neigh_inbin]
             neigh_mass = catalog['mass'][neigh_inbin]
@@ -70,8 +75,8 @@ def NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=np.arange(0., 4.5, 0.5),
             else: 
                 cut_mass = (neigh_mass >= neighbor_massbin[0]) & (neigh_mass < neighbor_massbin[1])
     
-            cut_tot = np.where(cut_nan & cut_rperp & cut_groupid & cut_mass) # total cut
-            neighborSSFR_rperp.append(neigh_ssfr[cut_tot])
+            cut_tot_neigh = np.where(cut_nan & cut_rperp & cut_groupid & cut_mass) # total cut
+            neighborSSFR_rperp.append(neigh_ssfr[cut_tot_neigh])
         neighSSFR_rperp_primarybins.append(neighborSSFR_rperp)
 
     output_dict = {
@@ -113,7 +118,7 @@ def Plot_NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=np.arange(0., 4.5, 
 
     ssfrplots = []
     for i_ssfr, ssfrs_rperp in enumerate(neighSSFR_rperp_primarybins):
-        ssfrplot, = sub.plot(0.5*(rperp_bins[:-1]+rperp_bins[1:]), [np.mean(ssfrs) for ssfrs in ssfrs_rperp], 
+        ssfrplot, = sub.plot(0.5*(rperp_bins[:-1]+rperp_bins[1:]), [np.median(ssfrs) for ssfrs in ssfrs_rperp], 
                 c=pretty_colors[i_ssfr], lw=3, ls='-', label=primary_SSFRbin_label[i_ssfr]) 
         ssfrplots.append(ssfrplot) 
 
@@ -141,7 +146,7 @@ def Plot_NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=np.arange(0., 4.5, 
     sub.minorticks_on() 
 
     sub.set_xlabel(r'$\mathtt{R_{\perp}}$ [Mpc]', fontsize=25) 
-    sub.set_ylabel(r'median log $\mathtt{SSFR}^\mathtt{('+label_ssfr_neigh+')}$ [$\mathtt{yr}^{-1}$]', 
+    sub.set_ylabel(r'median log $\mathtt{SSFR_{(neigh)}^{('+label_ssfr_neigh+')}}$ [$\mathtt{yr}^{-1}$]', 
             fontsize=25) 
     first_legend = sub.legend(handles=[kauffplot], loc='lower right', handletextpad=0.1)
     ax = plt.gca().add_artist(first_legend)
@@ -161,12 +166,12 @@ def Plot_NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=np.arange(0., 4.5, 
     elif neighbor_groupid == 'pure_centrals': 
         str_neigh_groupid = '.NeighborPureCentral'
     if neighbor_massbin is None:  
-        str_neigh_massbin = '.' 
+        str_neigh_massbin = '' 
     else: 
         str_neigh_massbin = '.'+'_'.join([str(neighbor_massbin[0]), str(neighbor_massbin[1])]) 
     fig_file = ''.join([UT.dir_fig(), 
-        'neighborSSFR_rprep_primarybins.', 
-        concat_file_spec, str_primary_groupid, '.', primary_pipeline.upper(), '.',
+        'neighborSSFR_rprep_primarybins', 
+        concat_file_spec, str_primary_groupid, '.', primary_pipeline.upper(),
         str_neigh_groupid, str_neigh_massbin, '.png']) 
     fig.savefig(fig_file, bbox_inches='tight') 
     plt.close()
@@ -752,14 +757,18 @@ def PrimaryIndices(catalog, pipeline='mpajhu', group_id='all', massbin=[10., 10.
     return is_primary[cut_tot], is_primary, cut_tot
 
 
-def PrimaryIndices_SSFRbins(catalog, percentiles=[25, 50, 75, 90], pipeline='mpajhu', group_id='all', massbin=[10., 10.5]):
-    ''' Indices of primaries in specified SSFR percentile bins
+def SSFR_percentilebins(ssfrs, percentiles=[25, 50, 75, 90]):
+    ''' Given an array of SSFRs classify them into percentile bins. 
+    Return the indices that correspond to the bins and also the SSFR 
+    cut-offs.
 
     Parameters
     ----------
-    * See PrimaryIndices
+    * ssfrs : array
+        Array of SSFRs
     * percentiles : list
-        List that specifies the percentile of the SSFR bins. [25, 50, 75, 90] --> 0-25, 25-50, 50-75, >75, >90
+        List that specifies the percentile of the SSFR bins. 
+        [25, 50, 75, 90] --> 0-25, 25-50, 50-75, >75, >90
 
     Return
     ------
@@ -768,42 +777,22 @@ def PrimaryIndices_SSFRbins(catalog, percentiles=[25, 50, 75, 90], pipeline='mpa
     * ssfr_bin_indices : list of arrays
         List of arrays where each array corresponds to the indices 
     '''
-    primary_totcut_indices, is_primary, cut_tot = \
-            PrimaryIndices(catalog, pipeline=pipeline, group_id=group_id, massbin=massbin)
-    if pipeline == 'vagc': 
-        ssfr_primary = catalog['ssfr'][primary_totcut_indices]
-        mass_primary = catalog['mass'][primary_totcut_indices]
-    elif pipeline == 'mpajhu': 
-        ssfr_primary = catalog['ssfr_tot_mpajhu'][primary_totcut_indices]
-        mass_primary = catalog['mass_tot_mpajhu'][primary_totcut_indices]   # *TOTAL* stellar mass 
-    else:
-        raise ValueError
-    
     # calculate the percentile cut offs
-    quantiles = np.percentile(ssfr_primary, percentiles) 
+    quantiles = np.percentile(ssfrs, percentiles) 
     
     ssfr_bin_indices = [] 
-    ssfr_bin_neighbor_indices = [] 
-    ssfr_bin_neighbor_rperp = [] 
     for i_q in range(len(quantiles)+1): 
         if i_q == 0:  
-            prim_inbin = np.where(ssfr_primary < quantiles[i_q])[0]
+            prim_inbin = np.where(ssfrs < quantiles[0])[0]
         elif percentiles[i_q-1] >= 75: 
-            prim_inbin = np.where(ssfr_primary >= quantiles[i_q-1])[0]
+            prim_inbin = np.where(ssfrs > quantiles[i_q-1])[0]
         else: 
-            prim_inbin = np.where((ssfr_primary >= quantiles[i_q-1]) & (ssfr_primary < quantiles[i_q]))[0]
+            prim_inbin = np.where(
+                    (ssfrs >= quantiles[i_q-1]) & 
+                    (ssfrs < quantiles[i_q]))[0]
         ssfr_bin_indices.append(prim_inbin)
 
-        neigh_inbin = np.concatenate(    # neighbor in primary bin 
-                [np.array(catalog['neighbor_indices_'+pipeline][i]) 
-                    for i in cut_tot[prim_inbin]]).astype('int') 
-        neigh_rperp_inbin = np.concatenate(
-                [np.array(catalog['neighbor_rperp_'+pipeline][i]) 
-                    for i in cut_tot[prim_inbin]])
-        ssfr_bin_neighbor_indices.append(neigh_inbin)
-        ssfr_bin_neighbor_rperp.append(neigh_rperp_inbin)
-
-    return quantiles, ssfr_bin_indices, ssfr_bin_neighbor_indices, ssfr_bin_neighbor_rperp
+    return quantiles, ssfr_bin_indices
 
 
 if __name__=='__main__': 
@@ -813,8 +802,8 @@ if __name__=='__main__':
                 'primary_delv': 500., 'primary_rperp': 0.5, 
                 'neighbor_delv': 500., 'neighbor_rperp': 5.}, 
             rperp_bins=np.arange(0., 4.5, 0.5), 
-            primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5], 
-            neighbor_pipeline='mpajhu', neighbor_groupid='all', neighbor_massbin=None)
+            primary_pipeline='mpajhu', primary_groupid='pure', primary_massbin=[10., 10.5], 
+            neighbor_pipeline='mpajhu', neighbor_groupid='centrals', neighbor_massbin=None)
 
 
     #PlotConformity_Primary_meanM_Rperp_bin('ssfr', {'name': 'tinker', 'Mrcut':18, 
