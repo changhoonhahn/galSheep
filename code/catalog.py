@@ -36,6 +36,13 @@ class ConformCatalog(object):
 
     def Jackknife(self, n_jack, RADec_bins=[5,5]): 
         ''' Remove n_jack jackknife field from the catalog. 
+        Numbering of the jackknife field goes across Dec first. 
+        e.g. RADec_bins=[3,4] 
+
+                Dec 
+            1 | 2 | 3 | 4
+        RA  5 | 6 | 7 | 8 
+            9 | 10| 11| 12 
 
         Parameters
         ----------
@@ -47,7 +54,50 @@ class ConformCatalog(object):
         '''
         if n_jack > (RADec_bins[0] * RADec_bins[1]): 
             raise ValueError
+        catalog = self.Read()
 
+        RA_percents = [100./np.float(RADec_bins[0])*np.float(i) for i in range(1,RADec_bins[0])]
+        Dec_percents = [100./np.float(RADec_bins[0])*np.float(i) for i in range(1,RADec_bins[0])]
+
+        RA_limits = np.percentile(catalog['ra'], RA_percents)
+        Dec_limits = np.percentile(catalog['dec'], Dec_percents)
+
+        # find RA and Dec limits of jackknife bin 
+        i_dec = np.mod(n_jack, RADec_bins[1])
+        if i_dec == 0: 
+            i_dec = RADec_bins[1]
+            i_ra = (n_jack - np.mod(n_jack, RADec_bins[1]))/RADec_bins[1]
+        else: 
+            i_ra = (n_jack - np.mod(n_jack, RADec_bins[1]))/RADec_bins[1]+1
+        print i_ra, i_dec
+        
+        # jackknife conditions for all galaxies 
+        if i_ra == 1: 
+            cut_ra = catalog['ra'] > RA_limits[0]
+        elif i_ra == RADec_bins[0]: 
+            cut_ra = catalog['ra'] < RA_limits[-1]
+        else: 
+            cut_ra = (catalog['ra'] < RA_limits[i_ra-2]) & (catalog['ra'] > RA_limits[i_ra-1])
+
+        if i_dec == 1: 
+            cut_dec = catalog['dec'] > Dec_limits[0] 
+        elif i_dec == RADec_bins[1]: 
+            cut_dec = catalog['dec'] < Dec_limits[-1] 
+        else: 
+            cut_dec = (catalog['dec'] < Dec_limits[i_dec-2]) & \
+                    (catalog['dec'] > Dec_limits[i_dec-1])
+        cut_jack = np.where(cut_ra & cut_dec) 
+        
+        # jackknife conditions for primary galaxies 
+        vagc_primary = np.where(catalog['primary_vagc'] == 1)[0]  
+        mpajhu_primary = np.where(catalog['primary_mpajhu'] == 1)[0]  
+
+
+        for key in catalog.keys(): 
+            if len(catalog[key]) == len(catalog['ra']):  
+                catalog[key] = catalog[key][cut_jack]
+            else: 
+        #return catalog 
 
     def Read(self): 
         ''' Read in the conformity catalog

@@ -9,6 +9,21 @@ from ChangTools.plotting import prettyplot
 from ChangTools.plotting import prettycolors
 
 
+def Test_Jackknife(n_jack, RADec_bins=[3,3]):  
+    ''' Test the Jackknifing
+    '''
+    cat_dict = {'name': 'tinker', 'Mrcut':18, 
+            'primary_delv': 500., 'primary_rperp': 0.5, 
+            'neighbor_delv': 500., 'neighbor_rperp': 5.}
+    # read conformity catalog based on input catalog dictionary
+    concat = clog.ConformCatalog(Mrcut=cat_dict['Mrcut'], 
+            primary_delv=cat_dict['primary_delv'], primary_rperp=cat_dict['primary_rperp'],  
+            neighbor_delv=cat_dict['neighbor_delv'], neighbor_rperp=cat_dict['neighbor_rperp'])
+    concat.Jackknife(n_jack, RADec_bins=RADec_bins) 
+
+
+
+
 def Test_PrimaryIdentify(del_v_cut=500., r_perp_cut=0.5): 
     ''' Test the primary identification criteria within the RA and Dec plane 
     '''
@@ -229,14 +244,15 @@ def MPAJHU_Tinker(Mrcut=18):
 
 
 if __name__=='__main__': 
+    Test_Jackknife(1, RADec_bins=[3,3])
     #MPAJHU_Tinker(Mrcut=18)
     #Test_PrimaryIdentify(del_v_cut=500., r_perp_cut=0.5)
     #Test_NeighborIdentify(del_v_cut=500., r_perp_cut=5.)
     #Test_KauffTink_PrimaryIdentification(Mrcut=18, del_v_cut=500., r_perp_cut=0.5)
     #clog.Build_TinkerCatalog(Mrcut=18)
     #clog.Build_MPAJHU_TinkerCatalog(Mrcut=18)
-    for delv in [500., 1000., 1500., 2000.]: #[500.]: #
-        tink_concat = clog.ConformCatalog(Mrcut=18, 
-                primary_delv=500., primary_rperp=0.5, 
-                neighbor_delv=delv, neighbor_rperp=5.)
-        tink_concat.Build() 
+    #for delv in [500., 1000., 1500., 2000.]: #[500.]: #
+    #    tink_concat = clog.ConformCatalog(Mrcut=18, 
+    #            primary_delv=500., primary_rperp=0.5, 
+    #            neighbor_delv=delv, neighbor_rperp=5.)
+    #    tink_concat.Build() 
