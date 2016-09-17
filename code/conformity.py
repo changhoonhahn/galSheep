@@ -32,15 +32,17 @@ def NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=np.arange(0., 4.5, 0.5),
     
     # for each of the primary SSFR bins 
     neighSSFR_rperp_primarybins = []
-    for primary_SSFRbin in primary_SSFRbin_list: 
+    for i_ssfrbin, primary_SSFRbin in enumerate(primary_SSFRbin_list): 
         # neighbor indices of primary galaxies within this SSFR bin  
-        neigh_inbin = np.concatenate(
-                [np.array(catalog['neighbor_indices_'+primary_pipeline][i]) 
-                    for i in primary_SSFRbin]).astype('int') 
+        neigh_inbin = primary_SSFRbin_neigh_indices[i_ssfrbin]
         # neighbor r_perp of primary galaxies within this SSFR bin  
-        neigh_rperp = np.concatenate(
-                [np.array(catalog['neighbor_rperp_'+primary_pipeline][i]) 
-                    for i in primary_SSFRbin])
+        neigh_rperp = primary_SSFRbin_neigh_rperp[i_ssfrbin]
+        #neigh_inbin = np.concatenate(
+        #        [np.array(catalog['neighbor_indices_'+primary_pipeline][i]) 
+        #            for i in primary_SSFRbin]).astype('int') 
+        #neigh_rperp = np.concatenate(
+        #        [np.array(catalog['neighbor_rperp_'+primary_pipeline][i]) 
+        #            for i in primary_SSFRbin])
         if neighbor_pipeline == 'vagc': 
             neigh_ssfr = catalog['ssfr'][neigh_inbin]
             neigh_mass = catalog['mass'][neigh_inbin]
@@ -799,7 +801,7 @@ def PrimaryIndices_SSFRbins(catalog, percentiles=[25, 50, 75, 90], pipeline='mpa
                 [np.array(catalog['neighbor_rperp_'+pipeline][i]) 
                     for i in cut_tot[prim_inbin]])
         ssfr_bin_neighbor_indices.append(neigh_inbin)
-        ssfr_bin_neighbor_rperp.append(neigh_rperp)
+        ssfr_bin_neighbor_rperp.append(neigh_rperp_inbin)
 
     return quantiles, ssfr_bin_indices, ssfr_bin_neighbor_indices, ssfr_bin_neighbor_rperp
 
