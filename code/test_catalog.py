@@ -20,7 +20,8 @@ def Test_Jackknife(n_jack, RADec_bins=[3,3]):
             primary_delv=cat_dict['primary_delv'], primary_rperp=cat_dict['primary_rperp'],  
             neighbor_delv=cat_dict['neighbor_delv'], neighbor_rperp=cat_dict['neighbor_rperp'])
     catalog = concat.Read() 
-    jack_catalog = concat.Jackknife(n_jack, RADec_bins=RADec_bins) 
+    concat.BuildJackknife(n_jack, RADec_bins=RADec_bins) 
+    jack_catalog = concat.ReadJackknife(n_jack, RADec_bins=RADec_bins)
 
     prettyplot()
     pretty_colors = prettycolors() 

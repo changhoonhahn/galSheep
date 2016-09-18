@@ -1,5 +1,4 @@
-'''
-
+''' 
 Construct catalogs for conformity measurements 
 
 '''
@@ -34,7 +33,15 @@ class ConformCatalog(object):
         self.neighbor_delv = neighbor_delv
         self.neighbor_rperp = neighbor_rperp
 
-    def Jackknife(self, n_jack, RADec_bins=[5,5]): 
+    def ReadJackknife(self, n_jack, RADec_bins=[5,5]): 
+        ''' Read jackknife catalog 
+        '''
+        jack_file = ''.join([(self.File()).rsplit('.p',1)[0], '.jackknife', 
+            str(n_jack), 'of', str(RADec_bins[0]), 'x', str(RADec_bins[1]), '.p'])
+        catalog = pickle.load(open(jack_file, 'rb'))
+        return catalog
+
+    def BuildJackknife(self, n_jack, RADec_bins=[5,5]): 
         ''' Remove n_jack jackknife field from the catalog. 
         Numbering of the jackknife field goes across Dec first. 
         e.g. RADec_bins=[3,4] 
@@ -130,7 +137,12 @@ class ConformCatalog(object):
                 else: 
                     print key
                     raise ValueError
-        return catalog 
+        
+        jack_file = ''.join([(self.File()).rsplit('.p',1)[0], '.jackknife', 
+            str(n_jack), 'of', str(RADec_bins[0]), 'x', str(RADec_bins[1]), '.p'])
+        print jack_file
+        pickle.dump(catalog, open(jack_file, 'wb')) 
+        return None  
 
     def Read(self): 
         ''' Read in the conformity catalog
