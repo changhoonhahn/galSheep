@@ -19,9 +19,30 @@ def Test_Jackknife(n_jack, RADec_bins=[3,3]):
     concat = clog.ConformCatalog(Mrcut=cat_dict['Mrcut'], 
             primary_delv=cat_dict['primary_delv'], primary_rperp=cat_dict['primary_rperp'],  
             neighbor_delv=cat_dict['neighbor_delv'], neighbor_rperp=cat_dict['neighbor_rperp'])
-    concat.Jackknife(n_jack, RADec_bins=RADec_bins) 
+    catalog = concat.Read() 
+    jack_catalog = concat.Jackknife(n_jack, RADec_bins=RADec_bins) 
 
+    prettyplot()
+    pretty_colors = prettycolors() 
+    fig = plt.figure() 
+    sub = fig.add_subplot(111)
 
+    sub.scatter(catalog['ra'], catalog['dec'], s=6, lw=0, c='k') 
+    sub.scatter(jack_catalog['ra'], jack_catalog['dec'], s=6, lw=0, c=pretty_colors[3]) 
+    
+    # axes
+    sub.set_xlabel('RA', fontsize=25) 
+    sub.set_xlim([-50, 400])
+    sub.set_ylabel('Dec', fontsize=25) 
+    sub.set_ylim([-20, 80])
+    sub.minorticks_on() 
+
+    fig_file = ''.join([UT.dir_fig(), 
+        'test_jackknife.', str(n_jack), 'of', 
+        str(RADec_bins[0]), 'x', str(RADec_bins[1]), '.png']) 
+    fig.savefig(fig_file, bbox_inches='tight') 
+    plt.close() 
+    return None 
 
 
 def Test_PrimaryIdentify(del_v_cut=500., r_perp_cut=0.5): 
@@ -244,7 +265,12 @@ def MPAJHU_Tinker(Mrcut=18):
 
 
 if __name__=='__main__': 
-    Test_Jackknife(1, RADec_bins=[3,3])
+    #Test_Jackknife(1, RADec_bins=[3,3])
+    #Test_Jackknife(9, RADec_bins=[3,3])
+    #Test_Jackknife(11, RADec_bins=[5,5])
+    #Test_Jackknife(18, RADec_bins=[5,5])
+    for n in range(1, 26):
+        Test_Jackknife(n, RADec_bins=[5,5])
     #MPAJHU_Tinker(Mrcut=18)
     #Test_PrimaryIdentify(del_v_cut=500., r_perp_cut=0.5)
     #Test_NeighborIdentify(del_v_cut=500., r_perp_cut=5.)
