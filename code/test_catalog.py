@@ -251,8 +251,8 @@ if __name__=='__main__':
     #Test_KauffTink_PrimaryIdentification(Mrcut=18, del_v_cut=500., r_perp_cut=0.5)
     #clog.Build_TinkerCatalog(Mrcut=18)
     #clog.Build_MPAJHU_TinkerCatalog(Mrcut=18)
-    #for delv in [500., 1000., 1500., 2000.]: #[500.]: #
+    #for delv in [500.]:#, 1000., 1500., 2000.]: #[500.]: #
     #    tink_concat = clog.ConformCatalog(Mrcut=18, 
     #            primary_delv=500., primary_rperp=0.5, 
     #            neighbor_delv=delv, neighbor_rperp=5.)
-    #    tink_concat.Build() 
+    #    tink_concat.Build(clobber=True) 

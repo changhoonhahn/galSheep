@@ -69,7 +69,6 @@ class ConformCatalog(object):
             i_ra = (n_jack - np.mod(n_jack, RADec_bins[1]))/RADec_bins[1]
         else: 
             i_ra = (n_jack - np.mod(n_jack, RADec_bins[1]))/RADec_bins[1]+1
-        print i_ra, i_dec
         
         # jackknife conditions for all galaxies 
         if i_ra == 1: 
@@ -86,17 +85,45 @@ class ConformCatalog(object):
         else: 
             cut_dec = (catalog['dec'] < Dec_limits[i_dec-2]) & \
                     (catalog['dec'] > Dec_limits[i_dec-1])
-        cut_jack = np.where(cut_ra & cut_dec) 
+        cut_jack = np.where(cut_ra & cut_dec)[0]
         
         # jackknife conditions for primary galaxies 
         vagc_primary = np.where(catalog['primary_vagc'] == 1)[0]  
         mpajhu_primary = np.where(catalog['primary_mpajhu'] == 1)[0]  
-
-
-        for key in catalog.keys(): 
-            if len(catalog[key]) == len(catalog['ra']):  
-                catalog[key] = catalog[key][cut_jack]
+        primary_jack_cut = [] 
+        for isprimary in [vagc_primary, mpajhu_primary]: 
+            if i_ra == 1: 
+                cut_ra_primary = catalog['ra'][isprimary] > RA_limits[0]
+            elif i_ra == RADec_bins[0]: 
+                cut_ra_primary = catalog['ra'][isprimary] < RA_limits[-1]
             else: 
+                cut_ra_primary = (catalog['ra'][isprimary] < RA_limits[i_ra-2]) & \
+                        (catalog['ra'][isprimary] > RA_limits[i_ra-1])
+
+            if i_dec == 1: 
+                cut_dec_primary = catalog['dec'][isprimary] > Dec_limits[0] 
+            elif i_dec == RADec_bins[1]: 
+                cut_dec_primary = catalog['dec'][isprimary] < Dec_limits[-1] 
+            else: 
+                cut_dec_primary = (catalog['dec'][isprimary] < Dec_limits[i_dec-2]) & \
+                        (catalog['dec'][isprimary] > Dec_limits[i_dec-1])
+            primary_jack_cut.append(np.where(cut_ra_primary & cut_dec_primary)[0]) 
+    
+        print catalog.keys() 
+        for key in catalog.keys(): 
+            print key
+            if len(catalog[key]) == len(catalog['ra']):  
+                if isinstance(catalog[key], list): 
+                    catalog[key] = [catalog[key][i_cut_jack] for i_cut_jack in cut_jack]
+                else: 
+                    catalog[key] = catalog[key][cut_jack]
+            else: 
+                if 'vagc' in key: 
+                    print key, 'vagc', len(catalog[key]) 
+                    catalog[key] = catalog[key][primary_jack_cut[0]]
+                elif 'mpajhu' in key: 
+                    print key, 'mpajhu', len(catalog[key]) 
+                    catalog[key] = catalog[key][primary_jack_cut[1]]
         #return catalog 
 
     def Read(self): 
@@ -105,7 +132,7 @@ class ConformCatalog(object):
         catalog = pickle.load(open(self.File(), 'rb'))
         return catalog
 
-    def Build(self): 
+    def Build(self, clobber=False): 
         ''' Build conformity catalog. 
 
         1. identify primaries using VAGC values
@@ -114,6 +141,9 @@ class ConformCatalog(object):
         4. identify neighbors of MPA-JHU primaries 
         5. save to pickle file
         '''
+        if clobber: 
+            Build_TinkerCatalog(Mrcut=self.Mrcut)
+            Build_MPAJHU_TinkerCatalog(Mrcut=self.Mrcut)
         catalog = MPAJHU_TinkerCatalog(Mrcut=self.Mrcut)
 
         # identify primaries based on VAGC values
