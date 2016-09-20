@@ -33,15 +33,15 @@ class ConformCatalog(object):
         self.neighbor_delv = neighbor_delv
         self.neighbor_rperp = neighbor_rperp
 
-    def ReadJackknife(self, n_jack, RADec_bins=[5,5]): 
-        ''' Read jackknife catalog 
-        '''
-        jack_file = ''.join([(self.File()).rsplit('.p',1)[0], '.jackknife', 
-            str(n_jack), 'of', str(RADec_bins[0]), 'x', str(RADec_bins[1]), '.p'])
-        catalog = pickle.load(open(jack_file, 'rb'))
-        return catalog
+        #def ReadJackknife(self, n_jack, RADec_bins=[5,5]): 
+        #    ''' Read jackknife catalog 
+        #    '''
+        #    jack_file = ''.join([(self.File()).rsplit('.p',1)[0], '.jackknife', 
+        #        str(n_jack), 'of', str(RADec_bins[0]), 'x', str(RADec_bins[1]), '.p'])
+        #    catalog = pickle.load(open(jack_file, 'rb'))
+        #    return catalog
 
-    def BuildJackknife(self, n_jack, RADec_bins=[5,5]): 
+    def Jackknife(self, catalog, n_jack, RADec_bins=[5,5]): 
         ''' Remove n_jack jackknife field from the catalog. 
         Numbering of the jackknife field goes across Dec first. 
         e.g. RADec_bins=[3,4] 
@@ -61,7 +61,7 @@ class ConformCatalog(object):
         '''
         if n_jack > (RADec_bins[0] * RADec_bins[1]): 
             raise ValueError
-        catalog = self.Read()
+        #catalog = self.Read()
 
         RA_percents = [100./np.float(RADec_bins[0])*np.float(i) for i in range(1,RADec_bins[0])]
         Dec_percents = [100./np.float(RADec_bins[0])*np.float(i) for i in range(1,RADec_bins[0])]
@@ -94,55 +94,18 @@ class ConformCatalog(object):
                     (catalog['dec'] > Dec_limits[i_dec-1])
         cut_jack = np.where(cut_ra | cut_dec)[0]
         
-        # jackknife conditions for primary galaxies 
-        vagc_primary = np.where(catalog['primary_vagc'] == 1)[0]  
-        mpajhu_primary = np.where(catalog['primary_mpajhu'] == 1)[0]  
-        primary_jack_cut = [] 
-        for isprimary in [vagc_primary, mpajhu_primary]: 
-            if i_ra == 1: 
-                cut_ra_primary = catalog['ra'][isprimary] > RA_limits[0]
-            elif i_ra == RADec_bins[0]: 
-                cut_ra_primary = catalog['ra'][isprimary] < RA_limits[-1]
-            else: 
-                cut_ra_primary = (catalog['ra'][isprimary] < RA_limits[i_ra-2]) | \
-                        (catalog['ra'][isprimary] > RA_limits[i_ra-1])
-
-            if i_dec == 1: 
-                cut_dec_primary = catalog['dec'][isprimary] > Dec_limits[0] 
-            elif i_dec == RADec_bins[1]: 
-                cut_dec_primary = catalog['dec'][isprimary] < Dec_limits[-1] 
-            else: 
-                cut_dec_primary = (catalog['dec'][isprimary] < Dec_limits[i_dec-2]) | \
-                        (catalog['dec'][isprimary] > Dec_limits[i_dec-1])
-            primary_jack_cut.append(np.where(cut_ra_primary | cut_dec_primary)[0]) 
-        
         n_gal = len(catalog['ra'])
+        jack_catalog = {} 
         for key in catalog.keys(): 
-            if len(catalog[key]) == n_gal:  
-                if isinstance(catalog[key], list): 
-                    catalog[key] = [catalog[key][i_cut_jack] for i_cut_jack in cut_jack]
-                else: 
-                    catalog[key] = catalog[key][cut_jack]
+            if isinstance(catalog[key], list): 
+                jack_catalog[key] = [catalog[key][i_cut_jack] for i_cut_jack in cut_jack]
             else: 
-                if 'vagc' in key: 
-                    if isinstance(catalog[key], list): 
-                        catalog[key] = [catalog[key][i_jack] for i_jack in primary_jack_cut[0]]
-                    else: 
-                        catalog[key] = catalog[key][primary_jack_cut[0]]
-                elif 'mpajhu' in key: 
-                    if isinstance(catalog[key], list): 
-                        catalog[key] = [catalog[key][i_jack] for i_jack in primary_jack_cut[1]]
-                    else: 
-                        catalog[key] = catalog[key][primary_jack_cut[1]]
-                else: 
-                    print key
-                    raise ValueError
-        
-        jack_file = ''.join([(self.File()).rsplit('.p',1)[0], '.jackknife', 
-            str(n_jack), 'of', str(RADec_bins[0]), 'x', str(RADec_bins[1]), '.p'])
-        print jack_file
-        pickle.dump(catalog, open(jack_file, 'wb')) 
-        return None  
+                jack_catalog[key] = catalog[key][cut_jack]
+        #jack_file = ''.join([(self.File()).rsplit('.p',1)[0], '.jackknife', 
+        #    str(n_jack), 'of', str(RADec_bins[0]), 'x', str(RADec_bins[1]), '.p'])
+        #print jack_file
+        #pickle.dump(catalog, open(jack_file, 'wb')) 
+        return jack_catalog 
 
     def Read(self): 
         ''' Read in the conformity catalog
@@ -414,10 +377,10 @@ def IdentifyPrimaries(catalog, del_v_cut=500., r_perp_cut=0.5, mpajhu=False):
     kdt_satellite_indices = cat_tree.query_ball_tree(cat_tree, r_eff)
     print 'KDTree takes ', time.time() - kd_time, ' seconds'
 
-    sat_indices = []    # satellites of primary isolation criteria
-    sat_rperp = []      # r_perp of satellites 
-    n_sat = []         # number of satellites  
-    isprimary = [] 
+    sat_indices = [[] for i in range(len(catalog['z']))] # satellites of primary isolation criteria
+    sat_rperp = [[] for i in range(len(catalog['z']))]   # r_perp of satellites 
+    n_sat = np.zeros(len(catalog['z'])) # number of satellites  
+    isprimary = np.zeros(len(catalog['z']))  
     for i_targ in range(len(catalog['z'])): 
         # calculate Delta v between target and satellites
         del_v_pair = c_kms * (
@@ -453,30 +416,24 @@ def IdentifyPrimaries(catalog, del_v_cut=500., r_perp_cut=0.5, mpajhu=False):
             ) 
     
         if len(keep_sat[0]) > 0: 
-            n_sat.append(len(keep_sat[0]))
-            sat_rperp.append(list(rperp[keep_sat]))
-            sat_indices.append(list(np.array(kdt_satellite_indices[i_targ])[keep_sat]))
+            n_sat[i_targ] = len(keep_sat[0])
+            sat_rperp[i_targ] = list(rperp[keep_sat])
+            sat_indices[i_targ] = list(np.array(kdt_satellite_indices[i_targ])[keep_sat])
 
             if M_sat[keep_sat].max() < (M_targ + np.log10(0.5)):    
                 # More massive than twice the most massive neighbor 
-                isprimary.append(1)
-            else: 
-                # not a primary 
-                isprimary.append(0) 
+                isprimary[i_targ] = 1
         else: 
             # is by default a primary 
-            isprimary.append(1)
-            n_sat.append(0)
-            sat_rperp.append([])
-            sat_indices.append([])
+            isprimary[i_targ] = 1
     
     if not mpajhu: 
-        catalog['n_secondary_vagc'] = np.array(n_sat)
+        catalog['n_secondary_vagc'] = n_sat
         catalog['secondary_rperp_vagc'] = sat_rperp
         catalog['secondary_indices_vagc'] = sat_indices
         catalog['primary_vagc'] = np.array(isprimary)
     else:
-        catalog['n_secondary_mpajhu'] = np.array(n_sat)
+        catalog['n_secondary_mpajhu'] = n_sat
         catalog['secondary_rperp_mpajhu'] = sat_rperp
         catalog['secondary_indices_mpahju'] = sat_indices
         catalog['primary_mpajhu'] = np.array(isprimary)
@@ -524,9 +481,9 @@ def IdentifyNeighbors(catalog, del_v_cut=500., r_perp_cut=5., mpajhu=False):
     kdt_neighbor_indices = primary_tree.query_ball_tree(cat_tree, r_eff)
     print 'KDTree takes ', time.time() - kd_time, ' seconds'
 
-    neigh_indices = []    # satellites of primary isolation criteria
-    neigh_rperp = []      # r_perp of satellites 
-    n_neigh = []         # number of satellites  
+    neigh_indices = [[] for i in range(len(catalog['z']))]  # satellites of primary isolation criteria
+    neigh_rperp = [[] for i in range(len(catalog['z']))]    # r_perp of satellites 
+    n_neigh = np.zeros(len(catalog['z']))        # number of satellites  
     for i_targ in range(len(is_primary)): 
         # calculate Delta v between target and satellites
         del_v_pair = c_kms * (
@@ -558,18 +515,21 @@ def IdentifyNeighbors(catalog, del_v_cut=500., r_perp_cut=5., mpajhu=False):
         else:
             if len(keep_neigh[0]) < catalog['n_secondary_mpajhu'][is_primary[i_targ]]: 
                 raise ValueError
-        n_neigh.append(len(keep_neigh[0]))
-        neigh_rperp.append(list(rperp[keep_neigh]))
-        neigh_indices.append(list(np.array(kdt_neighbor_indices[i_targ])[keep_neigh]))
+        n_neigh[is_primary[i_targ]] = len(keep_neigh[0])
+        neigh_rperp[is_primary[i_targ]] = list(rperp[keep_neigh])
+        neigh_indices[is_primary[i_targ]] = list(np.array(kdt_neighbor_indices[i_targ])[keep_neigh])
+
+    neigh_primary = np.repeat(-999, len(catalog['z'])) 
+    neigh_primary[is_primary] = is_primary 
     
     if not mpajhu: 
-        catalog['neighbor_primary_vagc'] = is_primary
-        catalog['n_neighbor_vagc'] = np.array(n_neigh)
+        catalog['neighbor_primary_vagc'] = neigh_primary  
+        catalog['n_neighbor_vagc'] = n_neigh
         catalog['neighbor_rperp_vagc'] = neigh_rperp
         catalog['neighbor_indices_vagc'] = neigh_indices
     else: 
-        catalog['neighbor_primary_mpajhu'] = is_primary
-        catalog['n_neighbor_mpajhu'] = np.array(n_neigh)
+        catalog['neighbor_primary_mpajhu'] = neigh_primary
+        catalog['n_neighbor_mpajhu'] = n_neigh
         catalog['neighbor_rperp_mpajhu'] = neigh_rperp
         catalog['neighbor_indices_mpajhu'] = neigh_indices
 

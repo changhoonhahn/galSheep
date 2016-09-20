@@ -10,21 +10,18 @@ from ChangTools.plotting import prettyplot
 from ChangTools.plotting import prettycolors
 
 
-def NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=np.arange(0., 4.5, 0.5),
+def NeighborSSFR_rperp_PrimaryBins(catalog, rperp_bins=np.arange(0., 4.5, 0.5), 
+        percentiles=[25, 50, 75, 90], quantiles=None, 
         primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5], 
         neighbor_pipeline='mpajhu', neighbor_groupid='all', neighbor_massbin=None): 
     ''' Calculate the mean and median SSFR(r_perp) of neighboring galaxies
     for primaries in SSFR percentile bins.
     '''
-    # read conformity catalog based on input catalog dictionary
-    concat = clog.ConformCatalog(Mrcut=cat_dict['Mrcut'], 
-            primary_delv=cat_dict['primary_delv'], primary_rperp=cat_dict['primary_rperp'],  
-            neighbor_delv=cat_dict['neighbor_delv'], neighbor_rperp=cat_dict['neighbor_rperp'])
-    catalog = concat.Read() 
-
     # SSFR binning of primaries
-    cut_primary, is_primary, cut_tot = PrimaryIndices(catalog, 
-                    pipeline=primary_pipeline, group_id=primary_groupid, massbin=primary_massbin)
+    cut_primary = PrimaryIndices(catalog, 
+            pipeline=primary_pipeline, 
+            group_id=primary_groupid, 
+            massbin=primary_massbin)
     
     # SSFR of primaries after final cut
     if primary_pipeline == 'vagc': 
@@ -33,8 +30,7 @@ def NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=np.arange(0., 4.5, 0.5),
         ssfr_cut_primary = catalog['ssfr_tot_mpajhu'][cut_primary]
     
     primary_SSFRbin_limits, primary_SSFRbin_list = SSFR_percentilebins(ssfr_cut_primary, 
-            percentiles=[25, 50, 75, 90])
-    primary_SSFRbin_label = ['0 - 25\%', '25 - 50\%', '50 - 75\%', '> 75\%', '> 90\%'] 
+            quantiles=quantiles, percentiles=percentiles)
     
     # for each of the primary SSFR bins 
     neighSSFR_rperp_primarybins = []
@@ -42,11 +38,11 @@ def NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=np.arange(0., 4.5, 0.5),
         # neighbor indices of primary galaxies within this SSFR bin  
         neigh_inbin = np.concatenate(    
                 [np.array(catalog['neighbor_indices_'+neighbor_pipeline][i]) 
-                    for i in cut_tot[primary_SSFRbin]]).astype('int') 
+                    for i in cut_primary[primary_SSFRbin]]).astype('int') 
         # neighbor r_perp of primary galaxies within this SSFR bin  
         neigh_rperp = np.concatenate(    
                 [np.array(catalog['neighbor_rperp_'+neighbor_pipeline][i]) 
-                    for i in cut_tot[primary_SSFRbin]])
+                    for i in cut_primary[primary_SSFRbin]])
 
         if neighbor_pipeline == 'vagc': 
             neigh_ssfr = catalog['ssfr'][neigh_inbin]
@@ -80,9 +76,80 @@ def NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=np.arange(0., 4.5, 0.5),
         neighSSFR_rperp_primarybins.append(neighborSSFR_rperp)
 
     output_dict = {
-            'ConCat_spec': concat._FileSpec(), 
             'primary_SSFRbin_limits': primary_SSFRbin_limits,
-            'primary_SSFRbin_label': primary_SSFRbin_label, 
+            'primary_SSFRbin_label': ['0 - 25\%', '25 - 50\%', '50 - 75\%', '> 75\%', '> 90\%'],
+            'neighbor_SSFR_rperp_primary_bins': neighSSFR_rperp_primarybins
+            }
+    return output_dict 
+
+
+def Jackknife_NeighborSSFR_rperp_PrimaryBins(catalog, n_jack, RADec_bins=[5,5], 
+        rperp_bins=np.arange(0., 4.5, 0.5), percentiles=[25, 50, 75, 90], quantiles=None, 
+        primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5], 
+        neighbor_pipeline='mpajhu', neighbor_groupid='all', neighbor_massbin=None): 
+    concat = clog.ConformCatalog()
+    jack_catalog = concat.Jackknife(catalog, n_jack, RADec_bins=RADec_bins) 
+    # SSFR binning of primaries
+    cut_primary = PrimaryIndices(jack_catalog, 
+            pipeline=primary_pipeline, 
+            group_id=primary_groupid, 
+            massbin=primary_massbin)
+    
+    # SSFR of primaries after final cut
+    if primary_pipeline == 'vagc': 
+        ssfr_cut_primary = jack_catalog['ssfr'][cut_primary]
+    elif primary_pipeline == 'mpajhu': 
+        ssfr_cut_primary = jack_catalog['ssfr_tot_mpajhu'][cut_primary]
+    
+    primary_SSFRbin_limits, primary_SSFRbin_list = SSFR_percentilebins(ssfr_cut_primary, 
+            quantiles=quantiles, percentiles=percentiles)
+    
+    # for each of the primary SSFR bins 
+    neighSSFR_rperp_primarybins = []
+    for i_ssfrbin, primary_SSFRbin in enumerate(primary_SSFRbin_list): 
+        # neighbor indices of primary galaxies within this SSFR bin  
+        neigh_inbin = np.concatenate(    
+                [np.array(jack_catalog['neighbor_indices_'+neighbor_pipeline][i]) 
+                    for i in cut_primary[primary_SSFRbin]]).astype('int') 
+        # neighbor r_perp of primary galaxies within this SSFR bin  
+        neigh_rperp = np.concatenate(    
+                [np.array(jack_catalog['neighbor_rperp_'+neighbor_pipeline][i]) 
+                    for i in cut_primary[primary_SSFRbin]])
+
+        if neighbor_pipeline == 'vagc': 
+            neigh_ssfr = catalog['ssfr'][neigh_inbin]
+            neigh_mass = catalog['mass'][neigh_inbin]
+        elif neighbor_pipeline == 'mpajhu': 
+            neigh_ssfr = catalog['ssfr_fib_mpajhu'][neigh_inbin]
+            neigh_mass = catalog['mass_tot_mpajhu'][neigh_inbin] #neighbor *total* mass 
+        neigh_psat = catalog['p_sat'][neigh_inbin]    # satellite probability of neighbors
+
+        # *neighbor* SSFR(r_perp)
+        neighborSSFR_rperp = [] 
+        for i_rperp in range(len(rperp_bins)-1): 
+            cut_nan = (np.isnan(neigh_ssfr) == False)
+            cut_rperp = (neigh_rperp > rperp_bins[i_rperp]) & \
+                    (neigh_rperp <= rperp_bins[i_rperp+1])
+            if neighbor_groupid == 'all': # include all neighbors 
+                cut_groupid = np.repeat(True, len(neigh_rperp))
+            elif neighbor_groupid == 'centrals': # *central* neighbors 
+                cut_groupid = (neigh_psat <= 0.5)
+            elif neighbor_groupid == 'pure_centrals': # *pure central* neighbors 
+                cut_groupid = (neigh_psat <= 0.01)
+            else: 
+                raise ValueError
+            if neighbor_massbin is None: 
+                cut_mass = np.repeat(True, len(neigh_rperp))
+            else: 
+                cut_mass = (neigh_mass >= neighbor_massbin[0]) & (neigh_mass < neighbor_massbin[1])
+    
+            cut_tot_neigh = np.where(cut_nan & cut_rperp & cut_groupid & cut_mass) # total cut
+            neighborSSFR_rperp.append(neigh_ssfr[cut_tot_neigh])
+        neighSSFR_rperp_primarybins.append(neighborSSFR_rperp)
+
+    output_dict = {
+            'primary_SSFRbin_limits': primary_SSFRbin_limits,
+            'primary_SSFRbin_label': ['0 - 25\%', '25 - 50\%', '50 - 75\%', '> 75\%', '> 90\%'],
             'neighbor_SSFR_rperp_primary_bins': neighSSFR_rperp_primarybins
             }
     return output_dict 
@@ -94,14 +161,49 @@ def Plot_NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=np.arange(0., 4.5, 
     ''' Plot the SSFR of neighboring galaxies of primary galaxies binned in SSFRs. 
     This is calculated from the function NeighborSSFR_rperp_PrimaryBins.
     '''
-    results = NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=rperp_bins,
-        primary_pipeline=primary_pipeline, primary_groupid=primary_groupid, primary_massbin=primary_massbin, 
-        neighbor_pipeline=neighbor_pipeline, neighbor_groupid=neighbor_groupid, neighbor_massbin=neighbor_massbin)
-    concat_file_spec = results['ConCat_spec']    # conformity catalog specification string 
+    # read conformity catalog based on input catalog dictionary
+    concat = clog.ConformCatalog(Mrcut=cat_dict['Mrcut'], 
+            primary_delv=cat_dict['primary_delv'], primary_rperp=cat_dict['primary_rperp'],  
+            neighbor_delv=cat_dict['neighbor_delv'], neighbor_rperp=cat_dict['neighbor_rperp'])
+    catalog = concat.Read() 
+    concat_file_spec = concat._FileSpec()    # conformity catalog specification string 
+
+    results = NeighborSSFR_rperp_PrimaryBins(catalog, rperp_bins=rperp_bins,
+            percentiles=[25, 50, 75, 90], quantiles=None, 
+            primary_pipeline=primary_pipeline, 
+            primary_groupid=primary_groupid, 
+            primary_massbin=primary_massbin, 
+            neighbor_pipeline=neighbor_pipeline, 
+            neighbor_groupid=neighbor_groupid, 
+            neighbor_massbin=neighbor_massbin)
     primary_SSFRbin_limits = results['primary_SSFRbin_limits']
     primary_SSFRbin_label = results['primary_SSFRbin_label']
     neighSSFR_rperp_primarybins = results['neighbor_SSFR_rperp_primary_bins']
-    
+
+    jack_results = []
+    jack_bins = [5,5]
+    for i_jack in range(1, jack_bins[0]*jack_bins[1]+1): 
+        print i_jack
+        jack_results_i = Jackknife_NeighborSSFR_rperp_PrimaryBins(
+                catalog, n_jack=i_jack, RADec_bins=jack_bins, 
+                rperp_bins=rperp_bins, percentiles=None, quantiles=primary_SSFRbin_limits, 
+                primary_pipeline=primary_pipeline, 
+                primary_groupid=primary_groupid, 
+                primary_massbin=primary_massbin, 
+                neighbor_pipeline=neighbor_pipeline,
+                neighbor_groupid=neighbor_groupid, 
+                neighbor_massbin=neighbor_massbin)
+        #jack_results_i = Jackknife_NeighborSSFR_rperp_PrimaryBins(
+        #        catalog, n_jack=i_jack, RADec_bins=jack_bins, 
+        #        rperp_bins=rperp_bins, percentiles=[25,50,75,90], quantiles=None, 
+        #        primary_pipeline=primary_pipeline, 
+        #        primary_groupid=primary_groupid, 
+        #        primary_massbin=primary_massbin, 
+        #        neighbor_pipeline=neighbor_pipeline,
+        #        neighbor_groupid=neighbor_groupid, 
+        #        neighbor_massbin=neighbor_massbin)
+        jack_results.append(jack_results_i['neighbor_SSFR_rperp_primary_bins'])
+
     prettyplot()
     pretty_colors = prettycolors()
     fig = plt.figure()
@@ -118,8 +220,17 @@ def Plot_NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=np.arange(0., 4.5, 
 
     ssfrplots = []
     for i_ssfr, ssfrs_rperp in enumerate(neighSSFR_rperp_primarybins):
-        ssfrplot, = sub.plot(0.5*(rperp_bins[:-1]+rperp_bins[1:]), [np.median(ssfrs) for ssfrs in ssfrs_rperp], 
+        ssfr_tot = np.array([np.median(ssfrs) for ssfrs in ssfrs_rperp]) 
+        ssfrplot, = sub.plot(0.5*(rperp_bins[:-1]+rperp_bins[1:]), ssfr_tot, 
                 c=pretty_colors[i_ssfr], lw=3, ls='-', label=primary_SSFRbin_label[i_ssfr]) 
+    
+        err_jack = np.zeros(len(ssfr_tot)) 
+        for jack_result in jack_results: 
+            ssfr_jack = np.array([np.median(ssfrs) for ssfrs in jack_result[i_ssfr]]) 
+            err_jack += (ssfr_jack - ssfr_tot)**2
+        err_jack *= np.float(jack_bins[0] * jack_bins[1] - 1)/np.float(jack_bins[0] * jack_bins[1])
+        sub.errorbar(0.5*(rperp_bins[:-1]+rperp_bins[1:]), ssfr_tot, yerr=np.sqrt(err_jack), 
+                c=pretty_colors[i_ssfr], elinewidth=2, capsize=5) 
         ssfrplots.append(ssfrplot) 
 
     if primary_pipeline == 'vagc': 
@@ -146,7 +257,7 @@ def Plot_NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=np.arange(0., 4.5, 
     sub.minorticks_on() 
 
     sub.set_xlabel(r'$\mathtt{R_{\perp}}$ [Mpc]', fontsize=25) 
-    sub.set_ylabel(r'median log $\mathtt{SSFR_{(neigh)}^{('+label_ssfr_neigh+')}}$ [$\mathtt{yr}^{-1}$]', 
+    sub.set_ylabel(r'median log($\mathtt{SSFR_{(neigh)}^{('+label_ssfr_neigh+')}}$ [$\mathtt{yr}^{-1}$])', 
             fontsize=25) 
     first_legend = sub.legend(handles=[kauffplot], loc='lower right', handletextpad=0.1)
     ax = plt.gca().add_artist(first_legend)
@@ -751,13 +862,14 @@ def PrimaryIndices(catalog, pipeline='mpajhu', group_id='all', massbin=[10., 10.
     elif group_id == 'satellites': # primaries within mass bin with SSFR that are *satellites*
         cut_group = (psat_primary > 0.5) 
     else: 
+        print group_id
         raise ValueError
     cut_tot = np.where(cut_nan & cut_mass & cut_group)[0]
 
-    return is_primary[cut_tot], is_primary, cut_tot
+    return is_primary[cut_tot]
 
 
-def SSFR_percentilebins(ssfrs, percentiles=[25, 50, 75, 90]):
+def SSFR_percentilebins(ssfrs, quantiles=None, percentiles=[25, 50, 75, 90]):
     ''' Given an array of SSFRs classify them into percentile bins. 
     Return the indices that correspond to the bins and also the SSFR 
     cut-offs.
@@ -778,7 +890,14 @@ def SSFR_percentilebins(ssfrs, percentiles=[25, 50, 75, 90]):
         List of arrays where each array corresponds to the indices 
     '''
     # calculate the percentile cut offs
-    quantiles = np.percentile(ssfrs, percentiles) 
+    if quantiles is None: 
+        #print percentiles
+        quantiles = np.percentile(ssfrs, percentiles) 
+    else: 
+        percentiles = [25, 50, 75, 90]
+        if quantiles is None: 
+            raise ValueError
+    #print quantiles
     
     ssfr_bin_indices = [] 
     for i_q in range(len(quantiles)+1): 
@@ -795,6 +914,7 @@ def SSFR_percentilebins(ssfrs, percentiles=[25, 50, 75, 90]):
     return quantiles, ssfr_bin_indices
 
 
+
 if __name__=='__main__': 
 
     Plot_NeighborSSFR_rperp_PrimaryBins(
@@ -802,8 +922,8 @@ if __name__=='__main__':
                 'primary_delv': 500., 'primary_rperp': 0.5, 
                 'neighbor_delv': 500., 'neighbor_rperp': 5.}, 
             rperp_bins=np.arange(0., 4.5, 0.5), 
-            primary_pipeline='mpajhu', primary_groupid='pure', primary_massbin=[10., 10.5], 
-            neighbor_pipeline='mpajhu', neighbor_groupid='centrals', neighbor_massbin=None)
+            primary_pipeline='mpajhu', primary_groupid='pure_centrals', primary_massbin=[10., 10.5], 
+            neighbor_pipeline='mpajhu', neighbor_groupid='centrals', neighbor_massbin=[10., 10.5])
 
 
     #PlotConformity_Primary_meanM_Rperp_bin('ssfr', {'name': 'tinker', 'Mrcut':18, 

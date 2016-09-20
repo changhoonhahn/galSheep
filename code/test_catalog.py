@@ -20,8 +20,8 @@ def Test_Jackknife(n_jack, RADec_bins=[3,3]):
             primary_delv=cat_dict['primary_delv'], primary_rperp=cat_dict['primary_rperp'],  
             neighbor_delv=cat_dict['neighbor_delv'], neighbor_rperp=cat_dict['neighbor_rperp'])
     catalog = concat.Read() 
-    concat.BuildJackknife(n_jack, RADec_bins=RADec_bins) 
-    jack_catalog = concat.ReadJackknife(n_jack, RADec_bins=RADec_bins)
+    jack_catalog = concat.Jackknife(catalog, n_jack, RADec_bins=RADec_bins) 
+    #jack_catalog = concat.ReadJackknife(n_jack, RADec_bins=RADec_bins)
 
     prettyplot()
     pretty_colors = prettycolors() 
@@ -266,11 +266,7 @@ def MPAJHU_Tinker(Mrcut=18):
 
 
 if __name__=='__main__': 
-    #Test_Jackknife(1, RADec_bins=[3,3])
-    #Test_Jackknife(9, RADec_bins=[3,3])
-    #Test_Jackknife(11, RADec_bins=[5,5])
-    #Test_Jackknife(18, RADec_bins=[5,5])
-    for n in range(1, 26):
+    for n in [1, 8, 10, 22]:
         Test_Jackknife(n, RADec_bins=[5,5])
     #MPAJHU_Tinker(Mrcut=18)
     #Test_PrimaryIdentify(del_v_cut=500., r_perp_cut=0.5)
@@ -282,4 +278,4 @@ if __name__=='__main__':
     #    tink_concat = clog.ConformCatalog(Mrcut=18, 
     #            primary_delv=500., primary_rperp=0.5, 
     #            neighbor_delv=delv, neighbor_rperp=5.)
-    #    tink_concat.Build(clobber=True) 
+    #    tink_concat.Build() 
