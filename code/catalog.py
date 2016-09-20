@@ -41,6 +41,29 @@ class ConformCatalog(object):
         #    catalog = pickle.load(open(jack_file, 'rb'))
         #    return catalog
 
+    def zSubsample(self, catalog, lowhigh): 
+        ''' Divide the catalog into redshift subsample: 
+        below the median, above the median
+        '''
+        if 'z' not in catalog.keys(): 
+            raise ValueError
+        med_z = np.median(catalog['z'])
+
+        if lowhigh == 'low': 
+            z_cut = np.where(catalog['z'] < med_z)[0]
+        elif lowhigh == 'high': 
+            z_cut = np.where(catalog['z'] >= med_z)[0] 
+        else: 
+            raise ValueError
+        
+        z_catalog = {} 
+        for key in catalog.keys(): 
+            if isinstance(catalog[key], list): 
+                z_catalog[key] = [catalog[key][i_zcut] for i_zcut in z_cut]
+            else: 
+                z_catalog[key] = catalog[key][z_cut]
+        return z_catalog, med_z
+
     def Jackknife(self, catalog, n_jack, RADec_bins=[5,5]): 
         ''' Remove n_jack jackknife field from the catalog. 
         Numbering of the jackknife field goes across Dec first. 
@@ -339,6 +362,101 @@ def Build_MPAJHU_TinkerCatalog(Mrcut=18):
         grp.create_dataset(key, data=catalog[key])
 
     f.close() 
+    return None
+
+
+def Build_MPAJHU_TinkerCatalog_ASCII(Mrcut=18): 
+    ''' Append MPA-JHU SSFR values to the Tinker et al. (2011) catalog.
+    The main purpose is to try to reproduce the Kauffmann et al. (2013) results. 
+    Galaxies are matched to each other through spherematch. 
+    '''
+    # import Tinker et al. (2011) catalog with specified Mr cut  
+    catalog = TinkerCatalog(Mrcut=Mrcut) 
+    
+    # import MPA-JHU catalog
+    mpajhu_gals = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'gal_info_dr7_v5_2.fit'])) 
+    # SFR total
+    mpajhu_sfrtot = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'gal_totsfr_dr7_v5_2.fits']))
+    # SFR fiber
+    mpajhu_sfrfib = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'gal_fibsfr_dr7_v5_2.fits']))
+    # SSFR total 
+    mpajhu_ssfrtot = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'gal_totspecsfr_dr7_v5_2.fits']))
+    # SSFR fiber
+    mpajhu_ssfrfib = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'gal_fibspecsfr_dr7_v5_2.fits']))
+    # stellar mass total 
+    mpajhu_masstot = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'totlgm_dr7_v5_2.fit']))
+    # stellar mass fiber 
+    mpajhu_massfib = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'fiblgm_dr7_v5_2.fit']))
+    
+    t_spherematch = time.time() 
+    match = spherematch(
+            catalog['ra'], catalog['dec'], mpajhu_gals.ra, mpajhu_gals.dec, 0.000833333) 
+    print 'Spherematch with matchlenght = ', 0.000833333
+    print 'takes ', time.time() - t_spherematch, 'seconds' 
+    print 1.- np.float(len(match[0]))/np.float(len(catalog['ra'])), 'of the VAGC galaxies'
+    print 'do not have matches, likely due to fiber collisions'
+    if len(match[0]) != len(np.unique(match[0])): 
+        raise ValueError
+    
+    # save the MPAJHU indices, jsut in case
+    catalog['mpajhu_index'] = np.repeat(-999, len(catalog['ra'])) 
+    catalog['mpajhu_index'][match[0]] = match[1]
+    
+    # append SFR, SSFR, and mass values to catalog 
+    for col in [
+            'sfr_tot_mpajhu', 'sfr_fib_mpajhu', 
+            'ssfr_tot_mpajhu', 'ssfr_fib_mpajhu', 
+            'mass_tot_mpajhu', 'mass_fib_mpajhu']:   # initiate arrays
+        catalog[col] = np.repeat(-999., len(catalog['ra']))
+
+    catalog['sfr_tot_mpajhu'][match[0]] = mpajhu_sfrtot.median[match[1]]
+    catalog['sfr_fib_mpajhu'][match[0]] = mpajhu_sfrfib.median[match[1]]
+    catalog['ssfr_tot_mpajhu'][match[0]] = mpajhu_ssfrtot.median[match[1]]
+    catalog['ssfr_fib_mpajhu'][match[0]] = mpajhu_ssfrfib.median[match[1]] 
+    catalog['mass_tot_mpajhu'][match[0]] = mpajhu_masstot.median[match[1]] 
+    catalog['mass_fib_mpajhu'][match[0]] = mpajhu_massfib.median[match[1]] 
+    print mpajhu_massfib.median[match[1]]
+
+    first_cols = ['id_gal', 'ra', 'dec', 'z', 'mass', 'sfr', 'ssfr', 
+            'mass_tot_mpajhu', 'mass_fib_mpajhu', 'sfr_tot_mpajhu', 'sfr_fib_mpajhu', 'ssfr_tot_mpajhu', 'ssfr_fib_mpajhu'] 
+
+    data_fmt = []
+    data_list = [] 
+    for i_key, key in enumerate(first_cols): 
+        data_list.append(catalog[key]) 
+        if key == 'id_gal': 
+            data_fmt.append('%i')
+        else: 
+            data_fmt.append('%10.5f')
+
+    later_cols = [] 
+    for key in catalog.keys(): 
+        if key not in first_cols: 
+            later_cols.append(key)
+
+    for key in later_cols: 
+        data_list.append(catalog[key]) 
+        if 'id' in key: 
+            data_fmt.append('%i')
+        elif 'index' in key: 
+            data_fmt.append('%i')
+        elif key == 'n_sersic': 
+            data_fmt.append('%i')
+        elif key == 'stellmass': 
+            data_fmt.append('%1.5e')
+        else: 
+            data_fmt.append('%10.5f')
+
+
+    str_header = ', '.join(first_cols + later_cols) 
+
+    M_cut = Tinker_Masscut(Mrcut) 
+    mpajhu_tinker_file = ''.join([UT.dir_dat(), 
+        'tinker2011catalogs/',
+        'GroupCat.Mr', str(Mrcut), '.Mass', str(M_cut), 
+        '.D360.MPAJHU.dat']) 
+    np.savetxt(mpajhu_tinker_file, (np.vstack(np.array(data_list))).T, 
+            fmt=data_fmt, delimiter='\t', header=str_header)
     return None
 
 

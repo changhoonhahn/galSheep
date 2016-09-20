@@ -171,7 +171,6 @@ def Fig_NeighborSSFR_rperp_PrimaryBins(cat_dict):
     return None 
 
 
-
 def Fig_NeighborSSFR_in_Primarybins(cat_dict, primary_massbin=[10., 10.5]): 
     ''' Figure plotting the median SSFR of neighbors as a function of r_perp 
     for primary galaxies binned in SSFR. Direct comparison to Kauffmann et al.(2013) 

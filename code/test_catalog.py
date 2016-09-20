@@ -266,8 +266,10 @@ def MPAJHU_Tinker(Mrcut=18):
 
 
 if __name__=='__main__': 
-    for n in [1, 8, 10, 22]:
-        Test_Jackknife(n, RADec_bins=[5,5])
+    #for n in [1, 8, 10, 22]:
+    #    Test_Jackknife(n, RADec_bins=[5,5])
+
+    clog.Build_MPAJHU_TinkerCatalog_ASCII(Mrcut=18)
     #MPAJHU_Tinker(Mrcut=18)
     #Test_PrimaryIdentify(del_v_cut=500., r_perp_cut=0.5)
     #Test_NeighborIdentify(del_v_cut=500., r_perp_cut=5.)
