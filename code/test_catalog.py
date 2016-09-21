@@ -8,6 +8,40 @@ import catalog as clog
 from ChangTools.plotting import prettyplot
 from ChangTools.plotting import prettycolors
 
+def Test_KauffmannParent_Pssfr(): 
+    ''' look at the P(sSFR) of the Kauffmann et al. sample
+    '''
+    catalog = clog.KauffmannParent() 
+    is_notnan = np.isnan(catalog['ssfr_fib']) == False 
+    fib_ssfr = catalog['ssfr_fib'][is_notnan]
+    print len(catalog['ssfr_fib']) - np.sum(is_notnan), ' out of ', len(catalog['ssfr_fib']), ' galaxies have NaN SSFR' 
+
+    ssfr_min, ssfr_max = -13., -8.75
+    pdf, bins = np.histogram(fib_ssfr, 
+            range=[ssfr_min, ssfr_max], bins=20, normed=True) 
+
+    prettyplot()
+    pretty_colors = prettycolors()
+    fig = plt.figure()
+    sub = fig.add_subplot(111)
+    sub.plot(0.5*(bins[:-1]+bins[1:]), pdf, c=pretty_colors[3], lw=3)
+    sub.text(-12.8, 0.5, 'median sSFR = '+str(round(np.median(fib_ssfr),3)), fontsize=20)
+    sub.vlines(np.median(fib_ssfr), 0., 10., 
+            color=pretty_colors[1], linewidth=3, linestyle='--')
+    sub.set_title('Kauffmann et al.(2013) cuts on dr72bright34')
+    # axes
+    sub.set_xlabel(r'log(SSFR)', fontsize=25)
+    sub.set_xlim([ssfr_min, ssfr_max]) 
+    sub.set_xticks([-13, -11, -9]) 
+    sub.set_ylabel(r'P(SSFR)', fontsize=25)
+    sub.set_ylim([0.0, 0.6])
+    sub.set_yticks([0., 0.2, 0.4, 0.6]) 
+    sub.minorticks_on()
+    fig_file = ''.join([UT.dir_fig(), 'KauffmannParent.Pssfr.png']) 
+    fig.savefig(fig_file) 
+    plt.close() 
+    return None
+
 
 def Test_Jackknife(n_jack, RADec_bins=[3,3]):  
     ''' Test the Jackknifing
@@ -266,10 +300,13 @@ def MPAJHU_Tinker(Mrcut=18):
 
 
 if __name__=='__main__': 
+    clog.Build_VAGCdr72_MPAJHU(Ascii=True)
+    #Test_KauffmannParent_Pssfr()
     #for n in [1, 8, 10, 22]:
     #    Test_Jackknife(n, RADec_bins=[5,5])
-
-    clog.Build_MPAJHU_TinkerCatalog_ASCII(Mrcut=18)
+    #clog.Build_MPAJHU_TinkerCatalog(Mrcut=18)
+    #clog.Build_KauffmannParent()
+    #clog.Build_VAGCdr72bright34()
     #MPAJHU_Tinker(Mrcut=18)
     #Test_PrimaryIdentify(del_v_cut=500., r_perp_cut=0.5)
     #Test_NeighborIdentify(del_v_cut=500., r_perp_cut=5.)

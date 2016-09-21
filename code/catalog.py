@@ -328,7 +328,7 @@ def Build_MPAJHU_TinkerCatalog(Mrcut=18):
     # save the MPAJHU indices, jsut in case
     catalog['mpajhu_index'] = np.repeat(-999, len(catalog['ra'])) 
     catalog['mpajhu_index'][match[0]] = match[1]
-    
+
     # append SFR, SSFR, and mass values to catalog 
     for col in [
             'sfr_tot_mpajhu', 'sfr_fib_mpajhu', 
@@ -361,6 +361,227 @@ def Build_MPAJHU_TinkerCatalog(Mrcut=18):
     for key in catalog.keys(): 
         grp.create_dataset(key, data=catalog[key])
 
+    f.close() 
+    return None
+
+
+def KauffmannParent(): 
+    ''' Read in the the Kauffmannn et al. (2013) parent sample constructed from 
+    VAGC dr72bright34 catalog 
+    '''
+    dr72_file = ''.join([UT.dir_dat(), 'vagc/', 'VAGCdr72.Kauff2013cut.hdf5']) 
+    catalog = {} 
+    f = h5py.File(dr72_file, 'r')
+    grp = f['data']
+    for col in grp.keys(): 
+        catalog[col] = grp[col].value  
+    f.close() 
+    return catalog
+
+
+def Build_KauffmannParent(): 
+    ''' Try to create the parent sample of Kauffmann et al.(2013) 
+    '''
+    # import VAGC dr72bright34
+    vagc_dr72 = VAGCdr72bright34_Catalog() 
+
+    # import MPA-JHU catalog
+    mpajhu_gals = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'gal_info_dr7_v5_2.fit'])) 
+    # SFR total
+    mpajhu_sfrtot = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'gal_totsfr_dr7_v5_2.fits']))
+    # SFR fiber
+    mpajhu_sfrfib = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'gal_fibsfr_dr7_v5_2.fits']))
+    # SSFR total 
+    mpajhu_ssfrtot = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'gal_totspecsfr_dr7_v5_2.fits']))
+    # SSFR fiber
+    mpajhu_ssfrfib = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'gal_fibspecsfr_dr7_v5_2.fits']))
+    # stellar mass total 
+    mpajhu_masstot = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'totlgm_dr7_v5_2.fit']))
+    # stellar mass fiber 
+    mpajhu_massfib = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'fiblgm_dr7_v5_2.fit']))
+    
+    catalog = {} 
+    catalog['ra'] = vagc_dr72['ra']
+    catalog['dec'] = vagc_dr72['dec']
+    catalog['z'] = vagc_dr72['z']
+    for i_band, band in enumerate(['u', 'g', 'r', 'i', 'z']):
+        catalog['M_'+band] = vagc_dr72['M_'+band]
+
+    # pre cut 
+    cut_z = (catalog['z'] > 0.017) & (catalog['z'] < 0.03) 
+    pre_cuts = np.where(cut_z)#& cut_stellarmass & cut_absmag)
+    for key in catalog.keys(): 
+        catalog[key] = catalog[key][pre_cuts]
+
+    t_spherematch = time.time() 
+    match = spherematch(catalog['ra'], catalog['dec'], mpajhu_gals.ra, mpajhu_gals.dec, 0.000833333) 
+    print 'Spherematch with matchlenght = ', 0.000833333
+    print 'takes ', time.time() - t_spherematch, 'seconds' 
+    print 1.- np.float(len(match[0]))/np.float(len(catalog['ra'])), 'of the VAGC galaxies'
+    print 'do not have matches'
+    if len(match[0]) != len(np.unique(match[0])): 
+        raise ValueError
+    
+    # save the MPAJHU indices, jsut in case
+    catalog['mpajhu_index'] = np.repeat(-999, len(catalog['ra'])) 
+    catalog['mpajhu_index'][match[0]] = match[1]
+
+    # append SFR, SSFR, and mass values to catalog 
+    for col in ['sfr_tot', 'sfr_fib', 'ssfr_tot', 'ssfr_fib', 'mass_tot', 'mass_fib']:   # initiate arrays
+        catalog[col] = np.repeat(-999., len(catalog['ra']))
+
+    catalog['sfr_tot'][match[0]] = mpajhu_sfrtot.median[match[1]]
+    catalog['sfr_fib'][match[0]] = mpajhu_sfrfib.median[match[1]]
+    catalog['ssfr_tot'][match[0]] = mpajhu_ssfrtot.median[match[1]]
+    catalog['ssfr_fib'][match[0]] = mpajhu_ssfrfib.median[match[1]]
+    catalog['mass_tot'][match[0]] = mpajhu_masstot.median[match[1]]
+    catalog['mass_fib'][match[0]] = mpajhu_massfib.median[match[1]]
+    
+    # kauffmann et al.(2013) cuts
+    cut_stellarmass = (catalog['mass_tot'] > 9.25)
+    cut_absmag = (catalog['M_r'] < -16.) & (catalog['M_r'] > -24.)
+    cut_match = (catalog['mpajhu_index'] != -999)
+
+    final_cuts = np.where(cut_stellarmass & cut_absmag & cut_match)
+    for key in catalog.keys(): 
+        catalog[key] = catalog[key][final_cuts]
+    
+    mpajhu_file = ''.join([UT.dir_dat(), 'vagc/', 'VAGCdr72.Kauff2013cut.hdf5']) 
+
+    f = h5py.File(mpajhu_file, 'w')
+    grp = f.create_group('data')
+    for key in catalog.keys(): 
+        grp.create_dataset(key, data=catalog[key])
+
+    f.close() 
+    return None
+
+
+def Build_VAGCdr72_MPAJHU(Ascii=False):
+    ''' Build VAGC dr72 with cross referenced MPAJHU stellar masses 
+    and SSFRs.
+    '''
+    # import VAGC dr72bright34
+    vagc_dr72 = VAGCdr72bright34_Catalog() 
+    print len(vagc_dr72['ra']), ', VAGC dr72bright34 galaxies'
+
+    # import MPA-JHU catalog
+    mpajhu_gals = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'gal_info_dr7_v5_2.fit'])) 
+    # SFR total
+    mpajhu_sfrtot = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'gal_totsfr_dr7_v5_2.fits']))
+    # SFR fiber
+    mpajhu_sfrfib = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'gal_fibsfr_dr7_v5_2.fits']))
+    # SSFR total 
+    mpajhu_ssfrtot = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'gal_totspecsfr_dr7_v5_2.fits']))
+    # SSFR fiber
+    mpajhu_ssfrfib = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'gal_fibspecsfr_dr7_v5_2.fits']))
+    # stellar mass total 
+    mpajhu_masstot = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'totlgm_dr7_v5_2.fit']))
+    # stellar mass fiber 
+    mpajhu_massfib = mrdfits(''.join([UT.dir_dat(), 'mpa_jhu/', 'fiblgm_dr7_v5_2.fit']))
+    
+    catalog = {} 
+    catalog['ra'] = vagc_dr72['ra']
+    catalog['dec'] = vagc_dr72['dec']
+    catalog['z'] = vagc_dr72['z']
+    for i_band, band in enumerate(['u', 'g', 'r', 'i', 'z']):
+        catalog['M_'+band] = vagc_dr72['M_'+band]
+
+    t_spherematch = time.time() 
+    match = spherematch(catalog['ra'], catalog['dec'], mpajhu_gals.ra, mpajhu_gals.dec, 0.000833333) 
+    print 'Spherematch with matchlenght = ', 0.000833333
+    print 'takes ', time.time() - t_spherematch, 'seconds' 
+    print 1.- np.float(len(match[0]))/np.float(len(catalog['ra'])), 'of the VAGC galaxies'
+    print 'do not have matches'
+    if len(match[0]) != len(np.unique(match[0])): 
+        raise ValueError
+    
+    # save the MPAJHU indices, jsut in case
+    catalog['mpajhu_index'] = np.repeat(-999, len(catalog['ra'])) 
+    catalog['mpajhu_index'][match[0]] = match[1]
+
+    # append SFR, SSFR, and mass values to catalog 
+    for col in ['sfr_tot', 'sfr_fib', 'ssfr_tot', 'ssfr_fib', 'mass_tot', 'mass_fib']:   # initiate arrays
+        catalog[col] = np.repeat(-999., len(catalog['ra']))
+
+    catalog['sfr_tot'][match[0]] = mpajhu_sfrtot.median[match[1]]
+    catalog['sfr_fib'][match[0]] = mpajhu_sfrfib.median[match[1]]
+    catalog['ssfr_tot'][match[0]] = mpajhu_ssfrtot.median[match[1]]
+    catalog['ssfr_fib'][match[0]] = mpajhu_ssfrfib.median[match[1]]
+    catalog['mass_tot'][match[0]] = mpajhu_masstot.median[match[1]]
+    catalog['mass_fib'][match[0]] = mpajhu_massfib.median[match[1]]
+    
+    mpajhu_file = ''.join([UT.dir_dat(), 'vagc/', 'VAGCdr72.MPAJHU.nocut.hdf5']) 
+
+    f = h5py.File(mpajhu_file, 'w')
+    grp = f.create_group('data')
+    for key in catalog.keys(): 
+        grp.create_dataset(key, data=catalog[key])
+    f.close() 
+
+    if Ascii:   # write to Ascii (for jeremy) 
+        mpajhu_file = ''.join([UT.dir_dat(), 'vagc/', 'VAGCdr72.MPAJHU.nocut.dat']) 
+        column_order = ['ra', 'dec', 'z', 'mass_tot', 'sfr_tot' , 'ssfr_tot', 'mass_fib', 'sfr_fib', 'ssfr_fib']
+        data_list = [] 
+        data_fmt = ['%10.5f' for i in range(len(column_order))]
+        str_header = ''
+        for col in column_order: 
+            data_list.append(catalog[col])
+            if 'mass' in col: 
+                str_header += ' '+col+' (Msun),'
+            elif 'sfr' in col: 
+                if 'ssfr' not in col: 
+                    str_header += ' '+col+' (Msun/yr),'
+                else: 
+                    str_header += ' '+col+','
+            else: 
+                str_header += ' '+col+','
+        np.savetxt(mpajhu_file, (np.vstack(np.array(data_list))).T, 
+                fmt=data_fmt, delimiter='\t', header=str_header)
+    return None
+
+
+def VAGCdr72bright34_Catalog(): 
+    ''' Read in the VAGC dr72bright34 catalog hdf5 file
+    '''
+    dr72_file = ''.join([UT.dir_dat(), 'vagc/', 'VAGCdr72bright34.hdf5']) 
+    catalog = {} 
+    f = h5py.File(dr72_file, 'r')
+    grp = f['data']
+    for col in grp.keys(): 
+        catalog[col] = grp[col].value  
+    f.close() 
+    return catalog
+
+
+def Build_VAGCdr72bright34(): 
+    ''' Build hdf5 file of VAGC dr72brigh34, which is the
+    parent sample of Jeremy's group catalog 
+    '''
+    # import VAGC dr72bright34
+    vagc_photoinfo = np.loadtxt(''.join([UT.dir_dat(), 'vagc/', 'photoinfo_nonan.dr72bright34.dat']), 
+            unpack=True, usecols=[0,1,2,3,4,5])
+    vagc_lss = np.loadtxt(''.join([UT.dir_dat(), 'vagc/', 'lss.dr72bright34.dat']), 
+            unpack=True, usecols=[0,3,4,5])
+    if not np.array_equal(vagc_photoinfo[0], vagc_lss[0]):
+        raise ValueError
+
+    catalog = {}
+    catalog['id'] = vagc_photoinfo[0]
+    for i_band, band in enumerate(['u', 'g', 'r', 'i', 'z']): 
+        catalog['M_'+band] = vagc_photoinfo[i_band+1]
+    catalog['ra'] = vagc_lss[1]
+    catalog['dec'] = vagc_lss[2]
+    catalog['cz'] = vagc_lss[3]
+    catalog['z'] = vagc_lss[3]/299792.458
+    print len(catalog['z']), ' total galaxies'
+    
+    dr72_file = ''.join([UT.dir_dat(), 'vagc/', 'VAGCdr72bright34.hdf5']) 
+
+    f = h5py.File(dr72_file, 'w')
+    grp = f.create_group('data')
+    for key in catalog.keys(): 
+        grp.create_dataset(key, data=catalog[key])
     f.close() 
     return None
 
