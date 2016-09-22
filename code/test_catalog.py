@@ -300,7 +300,8 @@ def MPAJHU_Tinker(Mrcut=18):
 
 
 if __name__=='__main__': 
-    clog.Build_VAGCdr72_MPAJHU(Ascii=True)
+    #clog.Build_VAGCdr72_MPAJHU(Ascii=True)
+    clog.Build_TinKauffGroupCat(Mass_cut=9.25)
     #Test_KauffmannParent_Pssfr()
     #for n in [1, 8, 10, 22]:
     #    Test_Jackknife(n, RADec_bins=[5,5])
