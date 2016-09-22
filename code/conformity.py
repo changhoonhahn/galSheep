@@ -87,7 +87,9 @@ def zSubsample_NeighborSSFR_rperp_PrimaryBins(catalog, lowhigh,
         rperp_bins=np.arange(0., 4.5, 0.5), percentiles=[25, 50, 75, 90], quantiles=None, 
         primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5], 
         neighbor_pipeline='mpajhu', neighbor_groupid='all', neighbor_massbin=None): 
-    concat = clog.ConformCatalog()
+    #concat = clog.ConformCatalog()
+    concat = clog.ConformCatalog('nothing', catalog_prop={})
+    #jack_catalog = concat.Jackknife(catalog, n_jack, RADec_bins=RADec_bins) 
     jack_catalog, z_cut = concat.zSubsample(catalog, lowhigh) 
     print z_cut
     # SSFR binning of primaries
@@ -121,8 +123,12 @@ def zSubsample_NeighborSSFR_rperp_PrimaryBins(catalog, lowhigh,
             neigh_ssfr = catalog['ssfr'][neigh_inbin]
             neigh_mass = catalog['mass'][neigh_inbin]
         elif neighbor_pipeline == 'mpajhu': 
-            neigh_ssfr = catalog['ssfr_fib_mpajhu'][neigh_inbin]
-            neigh_mass = catalog['mass_tot_mpajhu'][neigh_inbin] #neighbor *total* mass 
+            try: 
+                neigh_ssfr = catalog['ssfr_fib_mpajhu'][neigh_inbin]
+                neigh_mass = catalog['mass_tot_mpajhu'][neigh_inbin] #neighbor *total* mass 
+            except KeyError: 
+                neigh_ssfr = catalog['ssfr_fib'][neigh_inbin]
+                neigh_mass = catalog['mass_tot'][neigh_inbin] #neighbor *total* mass 
         neigh_psat = catalog['p_sat'][neigh_inbin]    # satellite probability of neighbors
         neigh_z = catalog['z'][neigh_inbin]    # satellite probability of neighbors
 
@@ -167,7 +173,7 @@ def Jackknife_NeighborSSFR_rperp_PrimaryBins(catalog, n_jack, RADec_bins=[5,5],
         rperp_bins=np.arange(0., 4.5, 0.5), percentiles=[25, 50, 75, 90], quantiles=None, 
         primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5], 
         neighbor_pipeline='mpajhu', neighbor_groupid='all', neighbor_massbin=None): 
-    concat = clog.ConformCatalog()
+    concat = clog.ConformCatalog('nothing', catalog_prop={})
     jack_catalog = concat.Jackknife(catalog, n_jack, RADec_bins=RADec_bins) 
     # SSFR binning of primaries
     cut_primary = PrimaryIndices(jack_catalog, 
@@ -242,9 +248,17 @@ def Plot_NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=np.arange(0., 4.5, 
     This is calculated from the function NeighborSSFR_rperp_PrimaryBins.
     '''
     # read conformity catalog based on input catalog dictionary
-    concat = clog.ConformCatalog(Mrcut=cat_dict['Mrcut'], 
+    if cat_dict['name'] == 'tinker': 
+        catalog_prop = {'Mrcut': cat_dict['Mrcut']} 
+    elif cat_dict['name'] == 'tinkauff': 
+        catalog_prop = {'Mass_cut': cat_dict['Mass_cut']} 
+
+    concat = clog.ConformCatalog(cat_dict['name'], catalog_prop=catalog_prop, 
             primary_delv=cat_dict['primary_delv'], primary_rperp=cat_dict['primary_rperp'],  
             neighbor_delv=cat_dict['neighbor_delv'], neighbor_rperp=cat_dict['neighbor_rperp'])
+    #concat = clog.ConformCatalog(Mrcut=cat_dict['Mrcut'], 
+    #        primary_delv=cat_dict['primary_delv'], primary_rperp=cat_dict['primary_rperp'],  
+    #        neighbor_delv=cat_dict['neighbor_delv'], neighbor_rperp=cat_dict['neighbor_rperp'])
     catalog = concat.Read() 
     concat_file_spec = concat._FileSpec()    # conformity catalog specification string 
 
@@ -361,7 +375,7 @@ def Plot_NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=np.arange(0., 4.5, 
     else: 
         str_neigh_massbin = '.'+'_'.join([str(neighbor_massbin[0]), str(neighbor_massbin[1])]) 
     fig_file = ''.join([UT.dir_fig(), 
-        'neighborSSFR_rprep_primarybins', 
+        'neighborSSFR_rprep_primarybins', '.', cat_dict['name'], 
         concat_file_spec, str_primary_groupid, '.', primary_pipeline.upper(),
         str_neigh_groupid, str_neigh_massbin, '.png']) 
     fig.savefig(fig_file, bbox_inches='tight') 
@@ -376,7 +390,12 @@ def Plot_NeighborSSFR_rperp_PrimaryBins_zSubsample(cat_dict, rperp_bins=np.arang
     This is calculated from the function NeighborSSFR_rperp_PrimaryBins.
     '''
     # read conformity catalog based on input catalog dictionary
-    concat = clog.ConformCatalog(Mrcut=cat_dict['Mrcut'], 
+    if cat_dict['name'] == 'tinker': 
+        catalog_prop = {'Mrcut': cat_dict['Mrcut']} 
+    elif cat_dict['name'] == 'tinkauff': 
+        catalog_prop = {'Mass_cut': cat_dict['Mass_cut']} 
+
+    concat = clog.ConformCatalog(cat_dict['name'], catalog_prop=catalog_prop, 
             primary_delv=cat_dict['primary_delv'], primary_rperp=cat_dict['primary_rperp'],  
             neighbor_delv=cat_dict['neighbor_delv'], neighbor_rperp=cat_dict['neighbor_rperp'])
     catalog = concat.Read() 
@@ -600,8 +619,12 @@ def PlotConformity_Primary_PDF_Rperp_bin(gal_prop, cat_dict,
                 neigh_ssfr.append(catalog['ssfr'][neigh_indices[neigh_cut]]) 
                 neigh_mass.append(catalog['mass'][neigh_indices[neigh_cut]]) 
             elif primary_id == 'mpajhu': 
-                neigh_ssfr.append(catalog['ssfr_fib_mpajhu'][neigh_indices[neigh_cut]])
-                neigh_mass.append(catalog['mass_tot_mpajhu'][neigh_indices[neigh_cut]]) #neighbor *total* mass 
+                try: 
+                    neigh_ssfr.append(catalog['ssfr_fib_mpajhu'][neigh_indices[neigh_cut]])
+                    neigh_mass.append(catalog['mass_tot_mpajhu'][neigh_indices[neigh_cut]]) #neighbor *total* mass 
+                except KeyError: 
+                    neigh_ssfr.append(catalog['ssfr_fib'][neigh_indices[neigh_cut]])
+                    neigh_mass.append(catalog['mass_tot'][neigh_indices[neigh_cut]]) #neighbor *total* mass 
 
         neigh_rperp = np.concatenate(neigh_rperp)
         neigh_ssfr = np.concatenate(neigh_ssfr) 
@@ -1048,8 +1071,12 @@ def PrimaryIndices(catalog, pipeline='mpajhu', group_id='all', massbin=[10., 10.
         ssfr_primary = catalog['ssfr'][is_primary]
         mass_primary = catalog['mass'][is_primary]
     elif pipeline == 'mpajhu': 
-        ssfr_primary = catalog['ssfr_tot_mpajhu'][is_primary]
-        mass_primary = catalog['mass_tot_mpajhu'][is_primary]   # *TOTAL* stellar mass 
+        try: 
+            ssfr_primary = catalog['ssfr_tot_mpajhu'][is_primary]
+            mass_primary = catalog['mass_tot_mpajhu'][is_primary]   # *TOTAL* stellar mass 
+        except KeyError: 
+            ssfr_primary = catalog['ssfr_tot'][is_primary]
+            mass_primary = catalog['mass_tot'][is_primary]   # *TOTAL* stellar mass 
     else:
         raise ValueError
     psat_primary = catalog['p_sat'][is_primary]
@@ -1120,15 +1147,22 @@ def SSFR_percentilebins(ssfrs, quantiles=None, percentiles=[25, 50, 75, 90]):
 
 if __name__=='__main__': 
 
+    #Plot_NeighborSSFR_rperp_PrimaryBins_zSubsample(
     #Plot_NeighborSSFR_rperp_PrimaryBins(
-    Plot_NeighborSSFR_rperp_PrimaryBins_zSubsample(
-            {'name': 'tinker', 'Mrcut':18, 
+    #        {'name': 'tinker', 'Mrcut':18, 
+    #            'primary_delv': 500., 'primary_rperp': 0.5, 
+    #            'neighbor_delv': 500., 'neighbor_rperp': 5.}, 
+    #        rperp_bins=np.arange(0., 4.5, 0.5), 
+    #        primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5], 
+    #        neighbor_pipeline='mpajhu', neighbor_groupid='all', neighbor_massbin=None)
+
+    Plot_NeighborSSFR_rperp_PrimaryBins(
+            {'name': 'tinkauff', 'Mass_cut': 9.25, 
                 'primary_delv': 500., 'primary_rperp': 0.5, 
                 'neighbor_delv': 500., 'neighbor_rperp': 5.}, 
             rperp_bins=np.arange(0., 4.5, 0.5), 
-            primary_pipeline='mpajhu', primary_groupid='pure_centrals', primary_massbin=[10., 10.5], 
-            neighbor_pipeline='mpajhu', neighbor_groupid='centrals', neighbor_massbin=[10., 10.5])
-
+            primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5], 
+            neighbor_pipeline='mpajhu', neighbor_groupid='all', neighbor_massbin=None)
 
     #PlotConformity_Primary_meanM_Rperp_bin('ssfr', {'name': 'tinker', 'Mrcut':18, 
     #    'primary_delv': 500., 'primary_rperp': 0.5, 

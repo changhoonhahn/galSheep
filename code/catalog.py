@@ -179,22 +179,28 @@ class ConformCatalog(object):
             for key in mpajhu_neighbor_info.key(): 
                 catalog[key+'_vagc'] = mpajhu_neighbor_info[key]
 
-        elif self.catalog_name == 'tinkauff': 
-            if clobber: 
-                Build_TinKauffGroupCat(Mass_cut=self.M_cut)
-            catalog = TinKauffGroupCat(Mass_cut=self.M_cut)
+        elif self.catalog_name in ['tinkauff', 'kauff']: 
+            if self.catalog_name == 'tinkauff':
+                if clobber: 
+                    Build_TinKauffGroupCat(Mass_cut=self.M_cut)
+                catalog = TinKauffGroupCat(Mass_cut=self.M_cut)
+            elif self.catalog_name == 'kauff': 
+                if clobber: 
+                    Build_KauffmannParent()
+                catalog = KauffmannParent()
             
-            mpajhu_primary_info = IdentifyPrimaries(catalog, masses=catalog['mass_tot'], 
+            # identify primaries based on MPAJHU values
+            mpajhu_primary_info = IdentifyPrimaries(catalog, masses=catalog['mass_tot_mpajhu'], 
                     del_v_cut=self.primary_delv, r_perp_cut=self.primary_rperp)
-            for key in mpajhu_primary_info.key(): 
+            for key in mpajhu_primary_info.keys(): 
                 catalog[key+'_mpajhu'] = mpajhu_primary_info[key]
 
             # identify neighbors of MPAJHU primaries 
             mpajhu_neighbor_info = IdentifyNeighbors(catalog, primary_info=mpajhu_primary_info,
                     del_v_cut=self.neighbor_delv, r_perp_cut=self.neighbor_rperp)
-            for key in mpajhu_neighbor_info.key(): 
-                catalog[key+'_vagc'] = mpajhu_neighbor_info[key]
-
+            for key in mpajhu_neighbor_info.keys(): 
+                catalog[key+'_mpajhu'] = mpajhu_neighbor_info[key]
+        
         pickle.dump(catalog, open(self.File(), 'wb')) 
         return None 
 
@@ -210,6 +216,11 @@ class ConformCatalog(object):
             conform_file = ''.join([
                 UT.dir_dat(), 'conform_catalog/',
                 'VAGCdr72brigh34_MPAJHU.GroupCat.Mass', str(self.M_cut), 
+                self._FileSpec(), '.p']) 
+        elif self.catalog_name == 'kauff':
+            conform_file = ''.join([
+                UT.dir_dat(), 'conform_catalog/',
+                'VAGCdr72brigh34_MPAJHU.Mass', str(self.M_cut), 
                 self._FileSpec(), '.p']) 
 
         return conform_file 
@@ -465,12 +476,12 @@ def Build_KauffmannParent():
     for col in ['sfr_tot', 'sfr_fib', 'ssfr_tot', 'ssfr_fib', 'mass_tot', 'mass_fib']:   # initiate arrays
         catalog[col] = np.repeat(-999., len(catalog['ra']))
 
-    catalog['sfr_tot'][match[0]] = mpajhu_sfrtot.median[match[1]]
-    catalog['sfr_fib'][match[0]] = mpajhu_sfrfib.median[match[1]]
-    catalog['ssfr_tot'][match[0]] = mpajhu_ssfrtot.median[match[1]]
-    catalog['ssfr_fib'][match[0]] = mpajhu_ssfrfib.median[match[1]]
-    catalog['mass_tot'][match[0]] = mpajhu_masstot.median[match[1]]
-    catalog['mass_fib'][match[0]] = mpajhu_massfib.median[match[1]]
+    catalog['sfr_tot_mpajhu'][match[0]] = mpajhu_sfrtot.median[match[1]]
+    catalog['sfr_fib_mpajhu'][match[0]] = mpajhu_sfrfib.median[match[1]]
+    catalog['ssfr_tot_mpajhu'][match[0]] = mpajhu_ssfrtot.median[match[1]]
+    catalog['ssfr_fib_mpajhu'][match[0]] = mpajhu_ssfrfib.median[match[1]]
+    catalog['mass_tot_mpajhu'][match[0]] = mpajhu_masstot.median[match[1]]
+    catalog['mass_fib_mpajhu'][match[0]] = mpajhu_massfib.median[match[1]]
     
     # kauffmann et al.(2013) cuts
     cut_stellarmass = (catalog['mass_tot'] > 9.25)
@@ -900,7 +911,7 @@ def TinKauffGroupCat(Mass_cut=9.25):
     dr72bright34 with MPA-JHU galaxy property values. 
     '''
     dr72_file = ''.join([UT.dir_dat(), '/tinkauff/',
-        'VAGCdr72_MPAJHU.GroupCat.Mass', str(M_cut), '.hdf5']) 
+        'VAGCdr72_MPAJHU.GroupCat.Mass', str(Mass_cut), '.hdf5']) 
     catalog = {} 
     f = h5py.File(dr72_file, 'r')
     grp = f['data']
@@ -923,18 +934,18 @@ def Build_TinKauffGroupCat(Mass_cut=9.25):
 
     catalog = {
             'id': gal_data[0], 
-            'ra': gal_data[5], 
-            'dec': gal_data[6],
+            'ra': gal_data[5] * 57.2957795, 
+            'dec': gal_data[6] * 57.2957795,
             'M_r': gal_data[1], 
             'M_g': gal_data[2],
             'z': gal_data[3]/299792.458,
-            'mass_tot': np.log10(gal_data[4]), 
+            'mass_tot_mpajhu': np.log10(gal_data[4]), 
             'Dn4000': gal_data[7], 
-            'ssfr_tot': gal_data[8], 
-            'ssfr_fib': gal_data[9], 
-            'sfr_tot': gal_data[10], 
-            'sfr_fib': gal_data[11], 
-            'mass_fib': gal_data[12], 
+            'ssfr_tot_mpajhu': gal_data[8], 
+            'ssfr_fib_mpajhu': gal_data[9], 
+            'sfr_tot_mpajhu': gal_data[10], 
+            'sfr_fib_mpajhu': gal_data[11], 
+            'mass_fib_mpajhu': gal_data[12], 
             } 
 
     # prob data 
