@@ -50,7 +50,9 @@ def NeighborSSFR_rperp_PrimaryBins(catalog, rperp_bins=np.arange(0., 4.5, 0.5),
         elif neighbor_pipeline == 'mpajhu': 
             neigh_ssfr = catalog['ssfr_fib_mpajhu'][neigh_inbin]
             neigh_mass = catalog['mass_tot_mpajhu'][neigh_inbin] #neighbor *total* mass 
-        neigh_psat = catalog['p_sat'][neigh_inbin]    # satellite probability of neighbors
+
+        if neighbor_groupid != 'all': # include all neighbors 
+            neigh_psat = catalog['p_sat'][neigh_inbin]    # satellite probability of neighbors
 
         # *neighbor* SSFR(r_perp)
         neighborSSFR_rperp = [] 
@@ -208,7 +210,8 @@ def Jackknife_NeighborSSFR_rperp_PrimaryBins(catalog, n_jack, RADec_bins=[5,5],
         elif neighbor_pipeline == 'mpajhu': 
             neigh_ssfr = catalog['ssfr_fib_mpajhu'][neigh_inbin]
             neigh_mass = catalog['mass_tot_mpajhu'][neigh_inbin] #neighbor *total* mass 
-        neigh_psat = catalog['p_sat'][neigh_inbin]    # satellite probability of neighbors
+        if neighbor_groupid != 'all': 
+            neigh_psat = catalog['p_sat'][neigh_inbin]    # satellite probability of neighbors
 
         # *neighbor* SSFR(r_perp)
         neighborSSFR_rperp = [] 
@@ -252,6 +255,8 @@ def Plot_NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=np.arange(0., 4.5, 
         catalog_prop = {'Mrcut': cat_dict['Mrcut']} 
     elif cat_dict['name'] == 'tinkauff': 
         catalog_prop = {'Mass_cut': cat_dict['Mass_cut']} 
+    elif cat_dict['name'] == 'kauff': 
+        catalog_prop = {} 
 
     concat = clog.ConformCatalog(cat_dict['name'], catalog_prop=catalog_prop, 
             primary_delv=cat_dict['primary_delv'], primary_rperp=cat_dict['primary_rperp'],  
@@ -1079,7 +1084,8 @@ def PrimaryIndices(catalog, pipeline='mpajhu', group_id='all', massbin=[10., 10.
             mass_primary = catalog['mass_tot'][is_primary]   # *TOTAL* stellar mass 
     else:
         raise ValueError
-    psat_primary = catalog['p_sat'][is_primary]
+    if group_id != 'all': 
+        psat_primary = catalog['p_sat'][is_primary]
     
     cut_nan = (np.isnan(ssfr_primary) == False)
     cut_mass = (mass_primary > massbin[0]) & (mass_primary < massbin[1])
@@ -1156,8 +1162,7 @@ if __name__=='__main__':
     #        primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5], 
     #        neighbor_pipeline='mpajhu', neighbor_groupid='all', neighbor_massbin=None)
 
-    Plot_NeighborSSFR_rperp_PrimaryBins(
-            {'name': 'tinkauff', 'Mass_cut': 9.25, 
+    Plot_NeighborSSFR_rperp_PrimaryBins({'name': 'kauff', 
                 'primary_delv': 500., 'primary_rperp': 0.5, 
                 'neighbor_delv': 500., 'neighbor_rperp': 5.}, 
             rperp_bins=np.arange(0., 4.5, 0.5), 

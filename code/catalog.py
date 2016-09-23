@@ -16,7 +16,7 @@ from ChangTools.fitstables import mrdfits
 
 
 class ConformCatalog(object):
-    def __init__(self, catalog_name, catalog_prop,  
+    def __init__(self, catalog_name, catalog_prop={},  
             primary_delv=500., primary_rperp=0.5, 
             neighbor_delv=1000., neighbor_rperp=5.):
         ''' Galaxy Catalog with primaries and secondaries identified 
@@ -28,6 +28,8 @@ class ConformCatalog(object):
             self.M_cut = Tinker_Masscut(self.Mrcut) # mass cut
         elif self.catalog_name == 'tinkauff': 
             self.M_cut = catalog_prop['Mass_cut']
+        elif self.catalog_name == 'kauff': 
+            pass
     
         # Delta v and r_perp for primary identification
         self.primary_delv = primary_delv
@@ -220,8 +222,7 @@ class ConformCatalog(object):
         elif self.catalog_name == 'kauff':
             conform_file = ''.join([
                 UT.dir_dat(), 'conform_catalog/',
-                'VAGCdr72brigh34_MPAJHU.Mass', str(self.M_cut), 
-                self._FileSpec(), '.p']) 
+                'VAGCdr72brigh34_MPAJHU.Kauffmann', self._FileSpec(), '.p']) 
 
         return conform_file 
 
@@ -473,7 +474,9 @@ def Build_KauffmannParent():
     catalog['mpajhu_index'][match[0]] = match[1]
 
     # append SFR, SSFR, and mass values to catalog 
-    for col in ['sfr_tot', 'sfr_fib', 'ssfr_tot', 'ssfr_fib', 'mass_tot', 'mass_fib']:   # initiate arrays
+    for col in ['sfr_tot_mpajhu', 'sfr_fib_mpajhu', 
+            'ssfr_tot_mpajhu', 'ssfr_fib_mpajhu', 
+            'mass_tot_mpajhu', 'mass_fib_mpajhu']:   # initiate arrays
         catalog[col] = np.repeat(-999., len(catalog['ra']))
 
     catalog['sfr_tot_mpajhu'][match[0]] = mpajhu_sfrtot.median[match[1]]
@@ -484,7 +487,7 @@ def Build_KauffmannParent():
     catalog['mass_fib_mpajhu'][match[0]] = mpajhu_massfib.median[match[1]]
     
     # kauffmann et al.(2013) cuts
-    cut_stellarmass = (catalog['mass_tot'] > 9.25)
+    cut_stellarmass = (catalog['mass_tot_mpajhu'] > 9.25)
     cut_absmag = (catalog['M_r'] < -16.) & (catalog['M_r'] > -24.)
     cut_match = (catalog['mpajhu_index'] != -999)
 
@@ -498,7 +501,6 @@ def Build_KauffmannParent():
     grp = f.create_group('data')
     for key in catalog.keys(): 
         grp.create_dataset(key, data=catalog[key])
-
     f.close() 
     return None
 
