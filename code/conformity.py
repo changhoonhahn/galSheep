@@ -379,8 +379,12 @@ def Plot_NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=np.arange(0., 4.5, 
         str_neigh_massbin = '' 
     else: 
         str_neigh_massbin = '.'+'_'.join([str(neighbor_massbin[0]), str(neighbor_massbin[1])]) 
+    if cat_dict['name'] == 'tinkauff': 
+        str_catalog = cat_dict['name']+'_'+str(cat_dict['Mass_cut'])
+    else: 
+        str_catalog = cat_dict['name']
     fig_file = ''.join([UT.dir_fig(), 
-        'neighborSSFR_rprep_primarybins', '.', cat_dict['name'], 
+        'neighborSSFR_rprep_primarybins', '.', str_catalog, 
         concat_file_spec, str_primary_groupid, '.', primary_pipeline.upper(),
         str_neigh_groupid, str_neigh_massbin, '.png']) 
     fig.savefig(fig_file, bbox_inches='tight') 
@@ -1101,6 +1105,8 @@ def PrimaryIndices(catalog, pipeline='mpajhu', group_id='all', massbin=[10., 10.
         print group_id
         raise ValueError
     cut_tot = np.where(cut_nan & cut_mass & cut_group)[0]
+    if group_id != 'all':  
+        print np.float(len(cut_tot))/np.float(len(np.where(cut_nan & cut_mass)[0])), ' are '+group_id
 
     return is_primary[cut_tot]
 
@@ -1161,19 +1167,20 @@ if __name__=='__main__':
     #        rperp_bins=np.arange(0., 4.5, 0.5), 
     #        primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5], 
     #        neighbor_pipeline='mpajhu', neighbor_groupid='all', neighbor_massbin=None)
-    Plot_NeighborSSFR_rperp_PrimaryBins({'name': 'tinkauff', 'Mass_cut': 9.25, 
+    #Plot_NeighborSSFR_rperp_PrimaryBins({'name': 'tinkauff', 'Mass_cut': 9.25, 
+    Plot_NeighborSSFR_rperp_PrimaryBins({'name': 'tinkauff', 'Mass_cut': 10.0, 
                 'primary_delv': 500., 'primary_rperp': 0.5, 
                 'neighbor_delv': 500., 'neighbor_rperp': 5.}, 
             rperp_bins=np.arange(0., 4.5, 0.5), 
-            primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5], 
-            neighbor_pipeline='mpajhu', neighbor_groupid='all', neighbor_massbin=None)
+            primary_pipeline='mpajhu', primary_groupid='pure_centrals', primary_massbin=[10., 10.5], 
+            neighbor_pipeline='mpajhu', neighbor_groupid='centrals', neighbor_massbin=[10., 10.5])
 
-    Plot_NeighborSSFR_rperp_PrimaryBins({'name': 'kauff', 
-                'primary_delv': 500., 'primary_rperp': 0.5, 
-                'neighbor_delv': 500., 'neighbor_rperp': 5.}, 
-            rperp_bins=np.arange(0., 4.5, 0.5), 
-            primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5], 
-            neighbor_pipeline='mpajhu', neighbor_groupid='all', neighbor_massbin=None)
+    #Plot_NeighborSSFR_rperp_PrimaryBins({'name': 'kauff', 
+    #            'primary_delv': 500., 'primary_rperp': 0.5, 
+    #            'neighbor_delv': 500., 'neighbor_rperp': 5.}, 
+    #        rperp_bins=np.arange(0., 4.5, 0.5), 
+    #        primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5], 
+    #        neighbor_pipeline='mpajhu', neighbor_groupid='all', neighbor_massbin=None)
 
     #PlotConformity_Primary_meanM_Rperp_bin('ssfr', {'name': 'tinker', 'Mrcut':18, 
     #    'primary_delv': 500., 'primary_rperp': 0.5, 

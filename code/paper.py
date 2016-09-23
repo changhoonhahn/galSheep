@@ -28,7 +28,14 @@ def Fig_NeighborSSFR_rperp_PrimaryBins(cat_dict):
     '''
     rperp_bins=np.arange(0., 4.5, 0.5)
     # read conformity catalog based on input catalog dictionary
-    concat = clog.ConformCatalog(Mrcut=cat_dict['Mrcut'], 
+    #concat = clog.ConformCatalog(Mrcut=cat_dict['Mrcut'], 
+    if cat_dict['name'] == 'tinker': 
+        catalog_prop = {'Mrcut': cat_dict['Mrcut']} 
+    elif cat_dict['name'] == 'tinkauff': 
+        catalog_prop = {'Mass_cut': cat_dict['Mass_cut']} 
+    elif cat_dict['name'] == 'kauff': 
+        catalog_prop = {} 
+    concat = clog.ConformCatalog(cat_dict['name'], catalog_prop=catalog_prop, 
             primary_delv=cat_dict['primary_delv'], primary_rperp=cat_dict['primary_rperp'],  
             neighbor_delv=cat_dict['neighbor_delv'], neighbor_rperp=cat_dict['neighbor_rperp'])
     catalog = concat.Read() 
@@ -657,9 +664,10 @@ def Fig_CentralMassbinNeighborSSFR_in_PurePrimarybins(cat_dict, primary_massbin=
 
 
 if __name__=='__main__': 
-    Fig_NeighborSSFR_rperp_PrimaryBins({'name': 'tinker', 'Mrcut':18, 
-        'primary_delv': 500., 'primary_rperp': 0.5, 
-        'neighbor_delv': 500., 'neighbor_rperp': 5.})
+    Fig_NeighborSSFR_rperp_PrimaryBins(
+            {'name': 'tinkauff', 'Mrcut':18, 'Mass_cut': 9.25, 
+                'primary_delv': 500., 'primary_rperp': 0.5, 
+                'neighbor_delv': 500., 'neighbor_rperp': 5.})
     
     #Fig_NeighborSSFR_in_Primarybins({'name': 'tinker', 'Mrcut':18, 
     #    'primary_delv': 500., 'primary_rperp': 0.5, 
