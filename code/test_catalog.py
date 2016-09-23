@@ -315,7 +315,8 @@ if __name__=='__main__':
     #clog.Build_TinkerCatalog(Mrcut=18)
     #clog.Build_MPAJHU_TinkerCatalog(Mrcut=18)
     for delv in [500.]:#[1000., 1500., 2000.]: #[500.]: #
-        tink_concat = clog.ConformCatalog('kauff', catalog_prop={}, 
+        #tink_concat = clog.ConformCatalog('tinkauff', catalog_prop={'Mass_cut': 9.25}, 
+        tink_concat = clog.ConformCatalog('kauff',  
                 primary_delv=500., primary_rperp=0.5, 
                 neighbor_delv=delv, neighbor_rperp=5.)
         tink_concat.Build() 

@@ -1161,6 +1161,12 @@ if __name__=='__main__':
     #        rperp_bins=np.arange(0., 4.5, 0.5), 
     #        primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5], 
     #        neighbor_pipeline='mpajhu', neighbor_groupid='all', neighbor_massbin=None)
+    Plot_NeighborSSFR_rperp_PrimaryBins({'name': 'tinkauff', 'Mass_cut': 9.25, 
+                'primary_delv': 500., 'primary_rperp': 0.5, 
+                'neighbor_delv': 500., 'neighbor_rperp': 5.}, 
+            rperp_bins=np.arange(0., 4.5, 0.5), 
+            primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5], 
+            neighbor_pipeline='mpajhu', neighbor_groupid='all', neighbor_massbin=None)
 
     Plot_NeighborSSFR_rperp_PrimaryBins({'name': 'kauff', 
                 'primary_delv': 500., 'primary_rperp': 0.5, 

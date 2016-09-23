@@ -931,7 +931,7 @@ def Build_TinKauffGroupCat(Mass_cut=9.25):
     # galdata_corr file 
     galdata_file = ''.join([
         UT.dir_dat(), 'tinkauff/', 
-        'clf_groups_JHU_M', str(Mass_cut), '.galdata_corr'])
+        'clf_groups_JHU_M', str(Mass_cut), '_z0.017.galdata_corr'])
     gal_data = np.loadtxt(galdata_file, unpack=True, usecols=range(1,14))
 
     catalog = {
@@ -953,7 +953,7 @@ def Build_TinKauffGroupCat(Mass_cut=9.25):
     # prob data 
     prob_file = ''.join([
         UT.dir_dat(), 'tinkauff/', 
-        'clf_groups_JHU_M', str(Mass_cut), '.prob'])
+        'clf_groups_JHU_M', str(Mass_cut), '_z0.017.prob'])
     prob_data = np.loadtxt(prob_file, unpack=True, usecols=[1,5]) 
     if not np.array_equal(catalog['id'], prob_data[0]): 
         raise ValueError
