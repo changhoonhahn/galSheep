@@ -43,11 +43,11 @@ def Fig_NeighborSSFR_rperp_PrimaryBins(cat_dict):
     
     prettyplot()
     pretty_colors = prettycolors()
-    fig = plt.figure(figsize=(12,12))
+    fig = plt.figure(figsize=(24,6))
     bkgd = fig.add_subplot(111, frameon=False)
 
     for i_plot in range(4):  
-        sub = fig.add_subplot(2,2,i_plot+1)
+        sub = fig.add_subplot(1,4,i_plot+1)
 
         if i_plot == 0: 
             primary_groupid = 'all'
@@ -103,12 +103,12 @@ def Fig_NeighborSSFR_rperp_PrimaryBins(cat_dict):
                 kauff_rperp, kauff_ssfr = np.loadtxt(kauff_dat_file, unpack=True, usecols=[0,1]) 
                 sub.scatter(kauff_rperp, kauff_ssfr, c=pretty_colors[i_ssfr], lw=0) 
                 kauffplot, = sub.plot(kauff_rperp, kauff_ssfr, 
-                        c=pretty_colors[i_ssfr], lw=1, ls='--', label='Kauffmann+(2013)')
+                        c=pretty_colors[i_ssfr], lw=2, ls=':', label='Kauffmann+(2013)')
         else: 
             for i_ssfr, ssfrs_rperp in enumerate(all_all):
                 ssfr_tot = np.array([np.median(ssfrs) for ssfrs in ssfrs_rperp]) 
                 ssfrplot, = sub.plot(0.5*(rperp_bins[:-1]+rperp_bins[1:]), ssfr_tot, 
-                        c=pretty_colors[i_ssfr], lw=1, ls='--') 
+                        c=pretty_colors[i_ssfr], lw=2, ls='--') 
 
         ssfrplots = []
         for i_ssfr, ssfrs_rperp in enumerate(neighSSFR_rperp_primarybins):
@@ -132,10 +132,12 @@ def Fig_NeighborSSFR_rperp_PrimaryBins(cat_dict):
         sub.set_ylim([-12.25, -9.75])
         sub.set_xticks([0, 1, 2, 3, 4]) 
         sub.set_yticks([-12., -11., -10.]) 
-        if i_plot == 0:
-            sub.set_xticklabels([]) 
-        elif i_plot == 1:
-            sub.set_xticklabels([]) 
+        if i_plot == 1:
+            sub.set_xticklabels(['', 1, 2, 3, 4]) 
+            sub.set_yticklabels([]) 
+        elif i_plot == 2:
+            #sub.set_xticklabels([]) 
+            sub.set_xticklabels(['', 1, 2, 3, 4]) 
             sub.set_yticklabels([]) 
         elif i_plot == 3: 
             sub.set_yticklabels([]) 
@@ -143,22 +145,23 @@ def Fig_NeighborSSFR_rperp_PrimaryBins(cat_dict):
         #sub.text(0.1, -11.9, r'Ranked in $\mathtt{log}\mathtt{SSFR^{('+label_pipe+')}}$', fontsize=20) 
 
         if i_plot == 0: 
-            sub.text(0.3, -12., 'All Primaries \nAll Neighbors', fontsize=20)
+            sub.text(2.0, -10.15, 'All Primaries \nAll Neighbors', fontsize=20)
         elif i_plot == 1: 
-            sub.text(0.3, -12., 'Pure Central Primaries \nAll Neighbors', fontsize=20)
+            sub.text(1.2, -10.15, 'Pure Central Primaries \nAll Neighbors', fontsize=20)
         elif i_plot == 2: 
-            sub.text(0.3, -12., 'Pure Central Primaries \nCentral Neighbors', fontsize=20)
+            sub.text(1.2, -10.15, 'Pure Central Primaries \nCentral Neighbors', fontsize=20)
         elif i_plot == 3: 
-            sub.text(0.3, -11.8, 'Pure Central Primaries \nCentral Neighbors', fontsize=20)
-            sub.text(0.3, -12., 
-                    str(neighbor_massbin[0])+'$< $log$\mathcal{M}_*^\mathtt{neigh} <$'+str(neighbor_massbin[1]), 
-                    fontsize=20)
+            pass
+            #sub.text(0.3, -11.8, 'Pure Central Primaries \nCentral Neighbors', fontsize=20)
+            #sub.text(0.3, -12., 
+            #        str(neighbor_massbin[0])+'$< $log$\mathcal{M}_*^\mathtt{neigh} <$'+str(neighbor_massbin[1]), 
+            #        fontsize=20)
         sub.minorticks_on() 
 
         if i_plot == 1: 
-            sub.legend(handles=ssfrplots, loc='upper right', ncol=2, handletextpad=0.1) 
+            sub.legend(handles=ssfrplots, loc='lower right', ncol=2, handletextpad=0.1) 
         elif i_plot == 0: 
-            sub.legend(handles=[kauffplot], loc='upper right', handletextpad=0.1)
+            sub.legend(handles=[kauffplot], loc='lower right', handletextpad=0.1, markerscale=10)
     
     #fig.title(r"$10.0 < \mathtt{log}\mathcal{M}^\mathtt{("+label_pipe+")}_* < 10.5$ ", fontsize=25) 
     bkgd.set_xticklabels([]) 
@@ -173,6 +176,181 @@ def Fig_NeighborSSFR_rperp_PrimaryBins(cat_dict):
     
     fig_file = ''.join([UT.dir_fig(), 
         'neighborSSFR_rprep_primarybins', concat_file_spec, '.png']) 
+    fig.savefig(fig_file, bbox_inches='tight') 
+    plt.close()
+    return None 
+
+
+def Fig_forTinker_NeighborSSFR_rperp_PrimaryBins():
+    ''' Ultimate plot of the SSFR of neighboring galaxies of primary galaxies 
+    binned in SSFRs. We look at 
+    - neighbor SSFR(r_perp) for all primaries 
+    - neighbor SSFR(r_perp) for pure central primaries.
+    - central neighbor SSFR(r_perp) for pure central primaries. 
+    - central neighbor SSFR(r_perp) within 10 < logM* < 10.5 for pure central primaries. 
+
+    '''
+    rperp_bins=np.arange(0., 4.5, 0.5)
+    cat_dict = {'name': 'tinkauff', 'primary_delv': 500., 'primary_rperp': 0.5, 
+            'neighbor_delv': 500., 'neighbor_rperp': 5.}
+
+    prettyplot()
+    pretty_colors = prettycolors()
+    fig = plt.figure(figsize=(24,6))
+    bkgd = fig.add_subplot(111, frameon=False)
+
+    for i_plot in range(4):  
+        if i_plot != 3: 
+            cat_dict['Mass_cut'] = 9.25
+        else: 
+            cat_dict['Mass_cut'] = 10.0
+
+        # read conformity catalog based on input catalog dictionary
+        #concat = clog.ConformCatalog(Mrcut=cat_dict['Mrcut'], 
+        if cat_dict['name'] == 'tinker': 
+            catalog_prop = {'Mrcut': cat_dict['Mrcut']} 
+        elif cat_dict['name'] == 'tinkauff': 
+            catalog_prop = {'Mass_cut': cat_dict['Mass_cut']} 
+        elif cat_dict['name'] == 'kauff': 
+            catalog_prop = {} 
+        concat = clog.ConformCatalog(cat_dict['name'], catalog_prop=catalog_prop, 
+                primary_delv=cat_dict['primary_delv'], primary_rperp=cat_dict['primary_rperp'],  
+                neighbor_delv=cat_dict['neighbor_delv'], neighbor_rperp=cat_dict['neighbor_rperp'])
+        catalog = concat.Read() 
+        concat_file_spec = concat._FileSpec()    # conformity catalog specification string 
+    
+        sub = fig.add_subplot(1,4,i_plot+1)
+
+        if i_plot == 0: 
+            primary_groupid = 'all'
+            neighbor_groupid = 'all'
+            neighbor_massbin = None 
+        elif i_plot == 1: 
+            primary_groupid = 'pure_centrals'
+            neighbor_groupid = 'all'
+            neighbor_massbin = None 
+        elif i_plot == 2: 
+            primary_groupid = 'pure_centrals'
+            neighbor_groupid = 'centrals'
+            neighbor_massbin = None 
+        elif i_plot == 3: 
+            primary_groupid = 'pure_centrals'
+            neighbor_groupid = 'centrals'
+            neighbor_massbin = [10., 10.5] 
+
+        results = conform.NeighborSSFR_rperp_PrimaryBins(catalog, rperp_bins=rperp_bins,
+                percentiles=[25, 50, 75, 90], quantiles=None, 
+                primary_pipeline='mpajhu', 
+                primary_groupid=primary_groupid, 
+                primary_massbin=[10., 10.5], 
+                neighbor_pipeline='mpajhu',
+                neighbor_groupid=neighbor_groupid, 
+                neighbor_massbin=neighbor_massbin)
+        primary_SSFRbin_limits = results['primary_SSFRbin_limits']
+        primary_SSFRbin_label = results['primary_SSFRbin_label']
+        neighSSFR_rperp_primarybins = results['neighbor_SSFR_rperp_primary_bins']
+        if i_plot == 0: 
+            all_all = neighSSFR_rperp_primarybins
+    
+        # jackknifes 
+        jack_results = []
+        jack_bins = [5,5]
+        for i_jack in range(1, jack_bins[0]*jack_bins[1]+1): 
+            jack_results_i = conform.Jackknife_NeighborSSFR_rperp_PrimaryBins(
+                    catalog, n_jack=i_jack, RADec_bins=jack_bins, 
+                    rperp_bins=rperp_bins, percentiles=None, quantiles=primary_SSFRbin_limits, 
+                    primary_pipeline='mpajhu', 
+                    primary_groupid=primary_groupid, 
+                    primary_massbin=[10., 10.5], 
+                    neighbor_pipeline='mpajhu',
+                    neighbor_groupid=neighbor_groupid, 
+                    neighbor_massbin=neighbor_massbin)
+            jack_results.append(jack_results_i['neighbor_SSFR_rperp_primary_bins'])
+    
+        if i_plot == 0: # plot Kauffmann et al.(2013) 
+            for i_ssfr, ssfrs_rperp in enumerate(neighSSFR_rperp_primarybins):
+                kauff_str = ['0to25', '25to50', '50to75', '75plus', '90plus']
+                kauff_dat_file = ''.join([UT.dir_dat(), 
+                    'literature/', 'kauff2013_', kauff_str[i_ssfr], '.dat']) 
+                kauff_rperp, kauff_ssfr = np.loadtxt(kauff_dat_file, unpack=True, usecols=[0,1]) 
+                #sub.scatter(kauff_rperp, kauff_ssfr, c=pretty_colors[i_ssfr], lw=0) 
+                kauffplot, = sub.plot(kauff_rperp, kauff_ssfr, 
+                        c=pretty_colors[i_ssfr], lw=2, ls=':', label='Kauffmann+(2013)')
+        else: 
+            for i_ssfr, ssfrs_rperp in enumerate(all_all):
+                ssfr_tot = np.array([np.median(ssfrs) for ssfrs in ssfrs_rperp]) 
+                ssfrplot, = sub.plot(0.5*(rperp_bins[:-1]+rperp_bins[1:]), ssfr_tot, 
+                        c=pretty_colors[i_ssfr], lw=2, ls='--') 
+
+        ssfrplots = []
+        for i_ssfr, ssfrs_rperp in enumerate(neighSSFR_rperp_primarybins):
+            ssfr_tot = np.array([np.median(ssfrs) for ssfrs in ssfrs_rperp]) 
+            ssfrplot, = sub.plot(0.5*(rperp_bins[:-1]+rperp_bins[1:]), ssfr_tot, 
+                    c=pretty_colors[i_ssfr], lw=3, ls='-', label=primary_SSFRbin_label[i_ssfr]) 
+        
+            err_jack = np.zeros(len(ssfr_tot)) 
+            for jack_result in jack_results: 
+                ssfr_jack = np.array([np.median(ssfrs) for ssfrs in jack_result[i_ssfr]]) 
+                err_jack += (ssfr_jack - ssfr_tot)**2
+            err_jack *= np.float(jack_bins[0] * jack_bins[1] - 1)/np.float(jack_bins[0] * jack_bins[1])
+            sub.errorbar(0.5*(rperp_bins[:-1]+rperp_bins[1:]), ssfr_tot, yerr=np.sqrt(err_jack), 
+                    c=pretty_colors[i_ssfr], elinewidth=2, capsize=5) 
+            ssfrplots.append(ssfrplot) 
+
+        label_pipe = 'tot; mpajhu'
+        label_ssfr_neigh = 'fib; mpajhu'
+        # axes
+        sub.set_xlim([0, 4]) 
+        sub.set_ylim([-12.25, -9.75])
+        sub.set_xticks([0, 1, 2, 3, 4]) 
+        sub.set_yticks([-12., -11., -10.]) 
+        if i_plot == 1:
+            sub.set_xticklabels(['', 1, 2, 3, 4]) 
+            sub.set_yticklabels([]) 
+        elif i_plot == 2:
+            #sub.set_xticklabels([]) 
+            sub.set_xticklabels(['', 1, 2, 3, 4]) 
+            sub.set_yticklabels([]) 
+        elif i_plot == 3: 
+            sub.set_yticklabels([]) 
+            sub.set_xticklabels(['', 1, 2, 3, 4]) 
+        #sub.text(0.1, -11.9, r'Ranked in $\mathtt{log}\mathtt{SSFR^{('+label_pipe+')}}$', fontsize=20) 
+
+        if i_plot == 0: 
+            sub.text(2.0, -10.15, 'All Primaries \nAll Neighbors', fontsize=20)
+        elif i_plot == 1: 
+            sub.text(1.0, -10.15, 'Pure Central Primaries \nAll Neighbors', fontsize=20)
+        elif i_plot == 2: 
+            sub.text(1.0, -10.15, 'Pure Central Primaries \nCentral Neighbors', fontsize=20)
+        elif i_plot == 3: 
+            pass
+            #sub.text(0.3, -11.8, 'Pure Central Primaries \nCentral Neighbors', fontsize=20)
+            #sub.text(0.3, -12., 
+            #        str(neighbor_massbin[0])+'$< $log$\mathcal{M}_*^\mathtt{neigh} <$'+str(neighbor_massbin[1]), 
+            #        fontsize=20)
+        sub.minorticks_on() 
+
+        if i_plot == 1: 
+            sub.legend(handles=ssfrplots, loc='lower right', ncol=2, handletextpad=0.1) 
+        elif i_plot == 0: 
+            kleg = sub.legend(handles=[kauffplot], loc='lower right', handletextpad=0.1, 
+                    prop={'size': 25}, markerscale=50)
+            for legobj in kleg.legendHandles:
+                legobj.set_linewidth(5.)
+    
+    #fig.title(r"$10.0 < \mathtt{log}\mathcal{M}^\mathtt{("+label_pipe+")}_* < 10.5$ ", fontsize=25) 
+    bkgd.set_xticklabels([]) 
+    bkgd.set_xlabel(r'$\mathtt{R_{\perp}}$ [Mpc]', labelpad=20, fontsize=30) 
+    bkgd.set_yticklabels([]) 
+    bkgd.set_ylabel(''.join([
+        r'median log($\mathtt{SSFR_{(neigh)}^{(', 
+        label_ssfr_neigh, 
+        ')}}$ [$\mathtt{yr}^{-1}$])']), 
+        labelpad=30, fontsize=30) 
+    fig.subplots_adjust(wspace=0., hspace=0.)
+    
+    fig_file = ''.join([UT.dir_fig(), 
+        'forTinker_neighborSSFR_rprep_primarybins', concat_file_spec, '.png']) 
     fig.savefig(fig_file, bbox_inches='tight') 
     plt.close()
     return None 
@@ -664,11 +842,12 @@ def Fig_CentralMassbinNeighborSSFR_in_PurePrimarybins(cat_dict, primary_massbin=
 
 
 if __name__=='__main__': 
-    Fig_NeighborSSFR_rperp_PrimaryBins(
-            {'name': 'tinkauff', 'Mrcut':18, 'Mass_cut': 9.25, 
-                'primary_delv': 500., 'primary_rperp': 0.5, 
-                'neighbor_delv': 500., 'neighbor_rperp': 5.})
-    
+    Fig_forTinker_NeighborSSFR_rperp_PrimaryBins()
+    #Fig_NeighborSSFR_rperp_PrimaryBins(
+    #        {'name': 'tinkauff', 'Mrcut':18, 'Mass_cut': 9.25, 
+    #            'primary_delv': 500., 'primary_rperp': 0.5, 
+    #            'neighbor_delv': 500., 'neighbor_rperp': 5.})
+    #
     #Fig_NeighborSSFR_in_Primarybins({'name': 'tinker', 'Mrcut':18, 
     #    'primary_delv': 500., 'primary_rperp': 0.5, 
     #    'neighbor_delv': 500., 'neighbor_rperp': 5.},
