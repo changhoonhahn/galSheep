@@ -392,6 +392,83 @@ def Plot_NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=np.arange(0., 4.5, 
     return None 
 
 
+def Plot_Primary_Groups(cat_dict, primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5]):
+    ''' Plot other members of groups that are within the primary 
+    '''
+    # read conformity catalog based on input catalog dictionary
+    if cat_dict['name'] == 'tinker': 
+        catalog_prop = {'Mrcut': cat_dict['Mrcut']} 
+    elif cat_dict['name'] == 'tinkauff': 
+        catalog_prop = {'Mass_cut': cat_dict['Mass_cut']} 
+    elif cat_dict['name'] == 'kauff': 
+        catalog_prop = {} 
+
+    concat = clog.ConformCatalog(cat_dict['name'], catalog_prop=catalog_prop, 
+            primary_delv=cat_dict['primary_delv'], primary_rperp=cat_dict['primary_rperp'],  
+            neighbor_delv=cat_dict['neighbor_delv'], neighbor_rperp=cat_dict['neighbor_rperp'])
+    catalog = concat.Read() 
+    concat_file_spec = concat._FileSpec()    # conformity catalog specification string 
+
+    cut_primary = PrimaryIndices(catalog, 
+            pipeline=primary_pipeline, 
+            group_id=primary_groupid, 
+            massbin=primary_massbin)
+
+    group_ids = catalog['group_id'].astype('int')  # galaxy id of primary catlaog
+    rand_group_ids = np.random.choice(range(len(cut_primary)), 10, replace=False) 
+
+    prettyplot()
+    pretty_colors = prettycolors()
+    for ii, i_group in enumerate(rand_group_ids): 
+        fig = plt.figure()
+        sub = fig.add_subplot(111)
+
+        others = np.where(group_ids == group_ids[cut_primary[i_group]])
+        if len(others[0]) < 5: 
+            continue
+
+        others_size = 50.*(catalog['mass_tot_mpajhu'][others]-9.0)
+        sub.scatter(catalog['ra'][others], catalog['dec'][others], 
+                lw=0, c=pretty_colors[0], s=others_size, label='Group Members')
+        primary_size = 50.*(catalog['mass_tot_mpajhu'][cut_primary[i_group]]-9.0)
+        sub.scatter(catalog['ra'][cut_primary[i_group]], catalog['dec'][cut_primary[i_group]], 
+                lw=0, c=pretty_colors[3], s=primary_size, label='Primary')
+
+        # axes 
+        sub.set_xlabel('RA', fontsize=25)
+        sub.set_xlim([np.floor(catalog['ra'][others].min()), 
+            np.ceil(catalog['ra'][others].max())])
+        sub.set_xticks(range(int(np.floor(catalog['ra'][others].min())), 
+            int(np.ceil(catalog['ra'][others].max()))+1))
+        sub.set_ylabel('Dec', fontsize=25)
+        sub.set_ylim([np.floor(catalog['dec'][others].min()), 
+            np.ceil(catalog['dec'][others].max())])
+        sub.set_yticks(range(int(np.floor(catalog['dec'][others].min())), 
+            int(np.ceil(catalog['dec'][others].max()))+1))
+        sub.legend(markerscale=0.5, numpoints=1)
+        sub.minorticks_on() 
+        
+        str_primary_groupid = 'PrimaryAll'       # primary category 
+        if primary_groupid == 'centrals':   
+            str_primary_groupid = '.PrimaryCentral'
+        elif primary_groupid == 'pure_centrals': 
+            str_primary_groupid= '.PrimaryPureCentral'
+        elif primary_groupid == 'satellites': 
+            str_primary_groupid = '.PrimarySatellite'
+        if cat_dict['name'] == 'tinkauff': 
+            str_catalog = cat_dict['name']+'_'+str(cat_dict['Mass_cut'])
+        else: 
+            str_catalog = cat_dict['name']
+
+        fig_file = ''.join([UT.dir_fig(), 
+            'Group_of_primary', '.', str_catalog, 
+            concat_file_spec, str_primary_groupid, '.', primary_pipeline.upper(), 
+            str(ii), '.png']) 
+        fig.savefig(fig_file, bbox_inches='tight') 
+        plt.close()
+    return None 
+
+
 def Plot_NeighborSSFR_rperp_PrimaryBins_zSubsample(cat_dict, rperp_bins=np.arange(0., 4.5, 0.5),
         primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5], 
         neighbor_pipeline='mpajhu', neighbor_groupid='all', neighbor_massbin=None):
@@ -1168,12 +1245,16 @@ if __name__=='__main__':
     #        primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5], 
     #        neighbor_pipeline='mpajhu', neighbor_groupid='all', neighbor_massbin=None)
     #Plot_NeighborSSFR_rperp_PrimaryBins({'name': 'tinkauff', 'Mass_cut': 9.25, 
-    Plot_NeighborSSFR_rperp_PrimaryBins({'name': 'tinkauff', 'Mass_cut': 10.0, 
+    Plot_Primary_Groups({'name': 'tinkauff', 'Mass_cut': 9.25, 
                 'primary_delv': 500., 'primary_rperp': 0.5, 
-                'neighbor_delv': 500., 'neighbor_rperp': 5.}, 
-            rperp_bins=np.arange(0., 4.5, 0.5), 
-            primary_pipeline='mpajhu', primary_groupid='pure_centrals', primary_massbin=[10., 10.5], 
-            neighbor_pipeline='mpajhu', neighbor_groupid='centrals', neighbor_massbin=[10., 10.5])
+                'neighbor_delv': 500., 'neighbor_rperp': 5.}, primary_pipeline='mpajhu', primary_groupid='satellites', primary_massbin=[10., 10.5])
+
+    #Plot_NeighborSSFR_rperp_PrimaryBins({'name': 'tinkauff', 'Mass_cut': 10.0, 
+    #            'primary_delv': 500., 'primary_rperp': 0.5, 
+    #            'neighbor_delv': 500., 'neighbor_rperp': 5.}, 
+    #        rperp_bins=np.arange(0., 4.5, 0.5), 
+    #        primary_pipeline='mpajhu', primary_groupid='pure_centrals', primary_massbin=[10., 10.5], 
+    #        neighbor_pipeline='mpajhu', neighbor_groupid='centrals', neighbor_massbin=[10., 10.5])
 
     #Plot_NeighborSSFR_rperp_PrimaryBins({'name': 'kauff', 
     #            'primary_delv': 500., 'primary_rperp': 0.5, 

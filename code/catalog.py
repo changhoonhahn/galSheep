@@ -952,10 +952,11 @@ def Build_TinKauffGroupCat(Mass_cut=9.25):
     # prob data 
     prob_file = ''.join([UT.dir_dat(), 'tinkauff/', 
         'clf_groups_JHU_M', str(Mass_cut), '_z0.017_fibcoll.prob'])
-    prob_data = np.loadtxt(prob_file, unpack=True, usecols=[1,5]) 
+    prob_data = np.loadtxt(prob_file, unpack=True, usecols=[1,2,5]) 
     if not np.array_equal(catalog['id'], prob_data[0]): 
         raise ValueError
-    catalog['p_sat'] = prob_data[1]
+    catalog['p_sat'] = prob_data[2]
+    catalog['group_id'] = prob_data[1]
     # cuts 
     if catalog['ssfr_tot_mpajhu'].min() == -999.: 
         nan_cuts = np.where(catalog['ssfr_tot_mpajhu'] != -999.) 
