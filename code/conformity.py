@@ -597,6 +597,273 @@ def Plot_NeighborSSFR_rperp_PrimaryBins_zSubsample(cat_dict, rperp_bins=np.arang
     return None 
 
 
+def Plot_PrimaryBins_Pmass(cat_dict,
+        primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5]):
+    ''' Plot the mass distribution of primary galaxies within bins of SSFR. 
+    '''
+    # read conformity catalog based on input catalog dictionary
+    if cat_dict['name'] == 'tinker': 
+        catalog_prop = {'Mrcut': cat_dict['Mrcut']} 
+    elif cat_dict['name'] == 'tinkauff': 
+        catalog_prop = {'Mass_cut': cat_dict['Mass_cut']} 
+    elif cat_dict['name'] == 'kauff': 
+        catalog_prop = {} 
+
+    concat = clog.ConformCatalog(cat_dict['name'], catalog_prop=catalog_prop, 
+            primary_delv=cat_dict['primary_delv'], primary_rperp=cat_dict['primary_rperp'],  
+            neighbor_delv=cat_dict['neighbor_delv'], neighbor_rperp=cat_dict['neighbor_rperp'])
+    #concat = clog.ConformCatalog(Mrcut=cat_dict['Mrcut'], 
+    #        primary_delv=cat_dict['primary_delv'], primary_rperp=cat_dict['primary_rperp'],  
+    #        neighbor_delv=cat_dict['neighbor_delv'], neighbor_rperp=cat_dict['neighbor_rperp'])
+    catalog = concat.Read() 
+    concat_file_spec = concat._FileSpec()    # conformity catalog specification string 
+
+    # SSFR binning of primaries
+    cut_primary = PrimaryIndices(catalog, 
+            pipeline=primary_pipeline, 
+            group_id=primary_groupid, 
+            massbin=primary_massbin)
+    
+    # SSFR of primaries after final cut
+    if primary_pipeline == 'vagc': 
+        ssfr_cut_primary = catalog['ssfr'][cut_primary]
+    elif primary_pipeline == 'mpajhu': 
+        ssfr_cut_primary = catalog['ssfr_tot_mpajhu'][cut_primary]
+    
+    primary_SSFRbin_limits, primary_SSFRbin_list = SSFR_percentilebins(ssfr_cut_primary, 
+            quantiles=None, percentiles=[25, 50, 75, 90])
+    primary_SSFRbin_labels = ['0 - 25\%', '25 - 50\%', '50 - 75\%', '> 75\%', '> 90\%']
+
+    prettyplot()
+    pretty_colors = prettycolors()
+    fig = plt.figure()
+    sub = fig.add_subplot(111)
+    
+    mass_bins = np.arange(10.0, 10.6, 0.1)
+    for i_ssfrbin, primary_SSFRbin in enumerate(primary_SSFRbin_list): 
+        if primary_pipeline == 'vagc': 
+            primary_mass = catalog['mass'][cut_primary[primary_SSFRbin]]
+        elif primary_pipeline == 'mpajhu': 
+            primary_mass = catalog['mass_tot_mpajhu'][cut_primary[primary_SSFRbin]]
+        #print primary_SSFRbin_labels[i_ssfrbin]
+        #print np.mean(primary_mass)
+        pdf, bins = np.histogram(primary_mass, 
+                range=[10., 10.5], bins=10) 
+        sub.plot(0.5 * (bins[:-1] + bins[1:]), pdf, lw=3,
+                color=pretty_colors[i_ssfrbin], label=primary_SSFRbin_labels[i_ssfrbin])
+
+    # axes
+    sub.set_xlim([10., 10.5]) 
+    sub.set_xticks([10, 10.25, 10.5]) 
+    #sub.set_ylim([-12.25, -9.75])
+    #sub.set_yticks([-12., -11., -10.]) 
+    sub.minorticks_on() 
+    sub.legend(loc='upper right', ncol=2, handletextpad=0.1) 
+
+    sub.set_xlabel(r'log$\mathtt{M_{*}}$', fontsize=25) 
+    sub.set_ylabel(r'P(log$\mathtt{M_{*}}$)', fontsize=25) 
+    
+    str_primary_groupid = 'PrimaryAll'       # primary category 
+    if primary_groupid == 'centrals':   
+        str_primary_groupid = '.PrimaryCentral'
+    elif primary_groupid == 'pure_centrals': 
+        str_primary_groupid= '.PrimaryPureCentral'
+    elif primary_groupid == 'satellites': 
+        str_primary_groupid = '.PrimarySatellite'
+    if cat_dict['name'] == 'tinkauff': 
+        str_catalog = cat_dict['name']+'_'+str(cat_dict['Mass_cut'])
+    else: 
+        str_catalog = cat_dict['name']
+    fig_file = ''.join([UT.dir_fig(), 
+        'Pmass_primarybins', '.', str_catalog, 
+        concat_file_spec, str_primary_groupid, '.', primary_pipeline.upper(), '.png']) 
+    fig.savefig(fig_file, bbox_inches='tight') 
+    plt.close()
+    return None 
+
+
+def Plot_PrimaryBins_massbin_SSFR_rperp(cat_dict, rperp_bins=np.arange(0., 4.5, 0.5), 
+        primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5],
+        neighbor_pipeline='mpajhu', neighbor_groupid='all', neighbor_massbin=None): 
+    ''' This is complicated. First calculate the mass distribuiton of the primaries in 
+    percentile bins of their SSFRs. Then, construct a random sample of primaries that 
+    reproduces the mass distribution of the 0-25% bin. Then calculate the 
+    SSFR_neighbor(r_perp) of that sample to the rest. 
+    '''
+    # read conformity catalog based on input catalog dictionary
+    if cat_dict['name'] == 'tinker': 
+        catalog_prop = {'Mrcut': cat_dict['Mrcut']} 
+    elif cat_dict['name'] == 'tinkauff': 
+        catalog_prop = {'Mass_cut': cat_dict['Mass_cut']} 
+    elif cat_dict['name'] == 'kauff': 
+        catalog_prop = {} 
+
+    concat = clog.ConformCatalog(cat_dict['name'], catalog_prop=catalog_prop, 
+            primary_delv=cat_dict['primary_delv'], primary_rperp=cat_dict['primary_rperp'],  
+            neighbor_delv=cat_dict['neighbor_delv'], neighbor_rperp=cat_dict['neighbor_rperp'])
+    catalog = concat.Read() 
+    concat_file_spec = concat._FileSpec()    # conformity catalog specification string 
+
+    # SSFR binning of primaries
+    cut_primary = PrimaryIndices(catalog, 
+            pipeline=primary_pipeline, 
+            group_id=primary_groupid, 
+            massbin=primary_massbin)
+    
+    # SSFR of primaries after final cut
+    if primary_pipeline == 'vagc': 
+        ssfr_cut_primary = catalog['ssfr'][cut_primary]
+    elif primary_pipeline == 'mpajhu': 
+        ssfr_cut_primary = catalog['ssfr_tot_mpajhu'][cut_primary]
+    
+    primary_SSFRbin_limits, primary_SSFRbin_list = SSFR_percentilebins(ssfr_cut_primary, 
+            quantiles=None, percentiles=[25, 50, 75, 90])
+    primary_SSFRbin_labels = ['0 - 25\%', '25 - 50\%', '50 - 75\%', '> 75\%', '> 90\%']
+
+    prettyplot()
+    pretty_colors = prettycolors()
+    fig = plt.figure()
+    sub = fig.add_subplot(111)
+    
+    # mass distribution of the lowest SSFR bin  
+    if primary_pipeline == 'vagc': 
+        primary_mass = catalog['mass'][cut_primary]
+    elif primary_pipeline == 'mpajhu': 
+        primary_mass = catalog['mass_tot_mpajhu'][cut_primary]
+
+    mass_dist, bins = np.histogram(primary_mass[primary_SSFRbin_list[0]], range=[10., 10.5], bins=10) 
+    random_indices = [] 
+    for i_bin in range(len(bins)-1): 
+        within_Mbin = np.where((primary_mass > bins[i_bin]) & (primary_mass <= bins[i_bin+1]))[0]
+        random_indices.append(np.random.choice(within_Mbin, size=mass_dist[i_bin], replace=False))
+    # indices of random sampel that reproduces P(M*) of lowest SSFR bin
+    lowSSFR_random = np.concatenate(random_indices)
+    print np.mean(primary_mass[lowSSFR_random])
+    
+    lowSSFR_random_converse = []
+    for i in range(len(cut_primary)): 
+        if i not in lowSSFR_random: 
+            lowSSFR_random_converse.append(i)
+    lowSSFR_random_converse = np.array(lowSSFR_random_converse)
+    print np.mean(primary_mass[lowSSFR_random_converse])
+
+    mass_dist, bins = np.histogram(primary_mass[primary_SSFRbin_list[-2]], range=[10., 10.5], bins=10) 
+    random_indices = [] 
+    for i_bin in range(len(bins)-1): 
+        within_Mbin = np.where((primary_mass > bins[i_bin]) & (primary_mass <= bins[i_bin+1]))[0]
+        random_indices.append(np.random.choice(within_Mbin, size=mass_dist[i_bin], replace=False))
+    highSSFR_random = np.concatenate(random_indices)
+    print np.mean(primary_mass[highSSFR_random])
+
+    neighSSFR_rperp_primarybins = [] 
+    for i_ssfrbin, primary_SSFRbin in enumerate([lowSSFR_random, lowSSFR_random_converse, highSSFR_random]): 
+        # neighbor indices of primary galaxies within this SSFR bin  
+        neigh_inbin = np.concatenate(    
+                [np.array(catalog['neighbor_indices_'+neighbor_pipeline][i]) 
+                    for i in cut_primary[primary_SSFRbin]]).astype('int') 
+        # neighbor r_perp of primary galaxies within this SSFR bin  
+        neigh_rperp = np.concatenate(    
+                [np.array(catalog['neighbor_rperp_'+neighbor_pipeline][i]) 
+                    for i in cut_primary[primary_SSFRbin]])
+
+        if neighbor_pipeline == 'vagc': 
+            neigh_ssfr = catalog['ssfr'][neigh_inbin]
+            neigh_mass = catalog['mass'][neigh_inbin]
+        elif neighbor_pipeline == 'mpajhu': 
+            neigh_ssfr = catalog['ssfr_fib_mpajhu'][neigh_inbin]
+            neigh_mass = catalog['mass_tot_mpajhu'][neigh_inbin] #neighbor *total* mass 
+
+        if neighbor_groupid != 'all': # include all neighbors 
+            neigh_psat = catalog['p_sat'][neigh_inbin]    # satellite probability of neighbors
+
+        # *neighbor* SSFR(r_perp)
+        neighborSSFR_rperp = [] 
+        for i_rperp in range(len(rperp_bins)-1): 
+            cut_nan = (np.isnan(neigh_ssfr) == False)
+            cut_rperp = (neigh_rperp > rperp_bins[i_rperp]) & \
+                    (neigh_rperp <= rperp_bins[i_rperp+1])
+            if neighbor_groupid == 'all': # include all neighbors 
+                cut_groupid = np.repeat(True, len(neigh_rperp))
+            elif neighbor_groupid == 'centrals': # *central* neighbors 
+                cut_groupid = (neigh_psat <= 0.5)
+            elif neighbor_groupid == 'pure_centrals': # *pure central* neighbors 
+                cut_groupid = (neigh_psat <= 0.01)
+            else: 
+                raise ValueError
+            if neighbor_massbin is None: 
+                cut_mass = np.repeat(True, len(neigh_rperp))
+            else: 
+                cut_mass = (neigh_mass >= neighbor_massbin[0]) & (neigh_mass < neighbor_massbin[1])
+    
+            cut_tot_neigh = np.where(cut_nan & cut_rperp & cut_groupid & cut_mass) # total cut
+            neighborSSFR_rperp.append(neigh_ssfr[cut_tot_neigh])
+        neighSSFR_rperp_primarybins.append(neighborSSFR_rperp)
+
+    primary_SSFRbin_label = ['Random sample of \n$0-25\%$ mass distribution', 'others',
+            'Random sample of \n$>75\%$ mass distribution' ] 
+    ssfrplots = []
+    for i_ssfr, ssfrs_rperp in enumerate(neighSSFR_rperp_primarybins):
+        ssfr_tot = np.array([np.median(ssfrs) for ssfrs in ssfrs_rperp]) 
+        ssfrplot, = sub.plot(0.5*(rperp_bins[:-1]+rperp_bins[1:]), ssfr_tot, 
+                c=pretty_colors[i_ssfr+1], lw=3, ls='-', label=primary_SSFRbin_label[i_ssfr]) 
+        ssfrplots.append(ssfrplot) 
+
+    # axes
+    sub.set_xlim([0, 4]) 
+    sub.set_xticks([0, 1, 2, 3, 4]) 
+    sub.set_ylim([-12.25, -9.75])
+    sub.set_yticks([-12., -11., -10.]) 
+    if neighbor_groupid == 'centrals': 
+        sub.text(1.3, -10., 'Central Neighbors', fontsize=20)
+    elif neighbor_groupid == 'pure_centrals': 
+        sub.text(1.3, -10., 'Pure Central Neighbors', fontsize=20)
+    if neighbor_massbin is not None:  
+        sub.text(1.3, -10.2, 
+                str(neighbor_massbin[0])+'$< $log$\mathcal{M}_*^\mathtt{neigh} <$'+str(neighbor_massbin[1]), 
+                fontsize=20)
+    sub.minorticks_on() 
+    
+    if primary_pipeline == 'vagc': 
+        label_pipe = 'vagc'
+        label_ssfr_neigh = 'vagc'
+    elif primary_pipeline == 'mpajhu': 
+        label_pipe = 'tot; mpajhu'
+        label_ssfr_neigh = 'fib; mpajhu'
+    sub.set_xlabel(r'$\mathtt{R_{\perp}}$ [Mpc]', fontsize=25) 
+    sub.set_ylabel(r'median log($\mathtt{SSFR_{(neigh)}^{('+label_ssfr_neigh+')}}$ [$\mathtt{yr}^{-1}$])', 
+            fontsize=25) 
+    sub.legend(handles=ssfrplots, loc='lower right', handletextpad=0.1) 
+
+    str_primary_groupid = 'PrimaryAll'       # primary category 
+    if primary_groupid == 'centrals':   
+        str_primary_groupid = '.PrimaryCentral'
+    elif primary_groupid == 'pure_centrals': 
+        str_primary_groupid= '.PrimaryPureCentral'
+    elif primary_groupid == 'satellites': 
+        str_primary_groupid = '.PrimarySatellite'
+    if neighbor_groupid == 'all':      # neighbor catalogy
+        str_neigh_groupid = '.NeighborAll'
+    elif neighbor_groupid == 'centrals': 
+        str_neigh_groupid = '.NeighborCentral'
+    elif neighbor_groupid == 'pure_centrals': 
+        str_neigh_groupid = '.NeighborPureCentral'
+    if neighbor_massbin is None:  
+        str_neigh_massbin = '' 
+    else: 
+        str_neigh_massbin = '.'+'_'.join([str(neighbor_massbin[0]), str(neighbor_massbin[1])]) 
+    if cat_dict['name'] == 'tinkauff': 
+        str_catalog = cat_dict['name']+'_'+str(cat_dict['Mass_cut'])
+    else: 
+        str_catalog = cat_dict['name']
+    fig_file = ''.join([UT.dir_fig(), 
+        'test_convoluted_primarybins_massbin', '.', str_catalog, 
+        concat_file_spec, str_primary_groupid, '.', primary_pipeline.upper(),
+        str_neigh_groupid, str_neigh_massbin, '.png']) 
+    fig.savefig(fig_file, bbox_inches='tight') 
+    plt.close()
+    return None 
+
+
 def PlotConformity_Primary_PDF_Rperp_bin(gal_prop, cat_dict, 
         primary_id='mpajhu', primary_massbin=[10., 10.5], cen_sat=False, 
         neighbors='all', neighbor_massbin=None): 
@@ -1235,6 +1502,18 @@ def SSFR_percentilebins(ssfrs, quantiles=None, percentiles=[25, 50, 75, 90]):
 
 
 if __name__=='__main__': 
+    #Plot_PrimaryBins_Pmass({'name': 'tinkauff', 'Mass_cut': 10.0, 
+    #Plot_PrimaryBins_massbin_SSFR_rperp({'name': 'tinkauff', 'Mass_cut': 10.0, 
+    #    'primary_delv': 500., 'primary_rperp': 0.5, 
+    #    'neighbor_delv': 500., 'neighbor_rperp': 5.},
+    #    primary_pipeline='mpajhu', primary_groupid='pure_centrals', primary_massbin=[10., 10.5],
+    #    neighbor_pipeline='mpajhu', neighbor_groupid='all', neighbor_massbin=None) 
+    
+    Plot_PrimaryBins_massbin_SSFR_rperp({'name': 'tinkauff', 'Mass_cut': 10.0, 
+        'primary_delv': 500., 'primary_rperp': 0.5, 
+        'neighbor_delv': 500., 'neighbor_rperp': 5.},
+        primary_pipeline='mpajhu', primary_groupid='pure_centrals', primary_massbin=[10., 10.5],
+        neighbor_pipeline='mpajhu', neighbor_groupid='centrals', neighbor_massbin=[10., 10.5])
 
     #Plot_NeighborSSFR_rperp_PrimaryBins_zSubsample(
     #Plot_NeighborSSFR_rperp_PrimaryBins(
@@ -1248,7 +1527,6 @@ if __name__=='__main__':
     Plot_Primary_Groups({'name': 'tinkauff', 'Mass_cut': 9.25, 
                 'primary_delv': 500., 'primary_rperp': 0.5, 
                 'neighbor_delv': 500., 'neighbor_rperp': 5.}, primary_pipeline='mpajhu', primary_groupid='satellites', primary_massbin=[10., 10.5])
-
     #Plot_NeighborSSFR_rperp_PrimaryBins({'name': 'tinkauff', 'Mass_cut': 10.0, 
     #            'primary_delv': 500., 'primary_rperp': 0.5, 
     #            'neighbor_delv': 500., 'neighbor_rperp': 5.}, 
