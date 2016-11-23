@@ -4,6 +4,8 @@ import numpy as np
 import util as UT
 import catalog as clog
 
+from astropy.cosmology import FlatLambdaCDM
+
 # --- plotting ---
 import matplotlib.pyplot as plt
 from ChangTools.plotting import prettyplot
@@ -395,6 +397,8 @@ def Plot_NeighborSSFR_rperp_PrimaryBins(cat_dict, rperp_bins=np.arange(0., 4.5, 
 def Plot_Primary_Groups(cat_dict, primary_pipeline='mpajhu', primary_groupid='all', primary_massbin=[10., 10.5]):
     ''' Plot other members of groups that are within the primary 
     '''
+    cosmo = FlatLambdaCDM(H0=70, Om0=0.3) # cosmology 
+
     # read conformity catalog based on input catalog dictionary
     if cat_dict['name'] == 'tinker': 
         catalog_prop = {'Mrcut': cat_dict['Mrcut']} 
@@ -415,57 +419,159 @@ def Plot_Primary_Groups(cat_dict, primary_pipeline='mpajhu', primary_groupid='al
             massbin=primary_massbin)
 
     group_ids = catalog['group_id'].astype('int')  # galaxy id of primary catlaog
-    rand_group_ids = np.random.choice(range(len(cut_primary)), 10, replace=False) 
+    # read group data 
+    group_file = ''.join([UT.dir_dat(), '/tinkauff/',
+        'clf_groups_JHU_M9.25_z0.017_fibcoll.groups']) 
+    group_data = np.loadtxt(group_file, unpack=True, usecols=[1, 3]) 
+    
+    rand_group_ids = np.random.choice(range(len(cut_primary)), len(cut_primary), replace=False) 
+    #rand_group_ids = range(10)#range(len(cut_primary))
+    
+    rand_group_id_list = []
+    widths = [] 
+    for rand_group_id in rand_group_ids: 
+        others = list(np.where(group_ids == group_ids[cut_primary[rand_group_id]])[0])
+
+        if (np.sum(catalog['p_sat'][others] < 0.5) == 1) and (len(others) > 5) and (len(rand_group_id_list) < 4): 
+            rand_group_id_list.append(rand_group_id) 
+
+            widths.append(np.ceil(catalog['ra'][others].max() - catalog['ra'][others].min()))
+            widths.append(np.ceil(catalog['dec'][others].max() - catalog['dec'][others].min()))
+    
+    wid_max = np.max(widths)
+    print wid_max
 
     prettyplot()
     pretty_colors = prettycolors()
-    for ii, i_group in enumerate(rand_group_ids): 
-        fig = plt.figure()
-        sub = fig.add_subplot(111)
+    fig = plt.figure(figsize=(24,6))
+    bkgd = fig.add_subplot(111, frameon=False)
+    bkgd.tick_params(labelcolor='none', top='off', bottom='off', left='off', right='off')
+    for ii, i_group in enumerate(rand_group_id_list): 
+        sub = fig.add_subplot(1, 4, ii+1, aspect='equal')
+        
+        halo_radius = catalog['angradius_halo'][cut_primary[i_group]]
+        halo_radius *= 57.2958
+        others = list(np.where(group_ids == group_ids[cut_primary[i_group]])[0])
 
-        others = np.where(group_ids == group_ids[cut_primary[i_group]])
-        if len(others[0]) < 5: 
+        if np.sum(catalog['p_sat'][others] < 0.5) != 1: 
+            continue 
+        if len(others) < 5: 
             continue
+        M_group = group_data[1][np.where(group_data[0] == group_ids[cut_primary[i_group]])[0]] 
+
+        central_index = others[np.where(catalog['p_sat'][others] < 0.5)[0]]
+
+        d_M = cosmo.comoving_distance(catalog['z'][cut_primary[i_group]])
+        theta = 0.5/d_M.value * 57.2958
+        
+        # others in the group that's within the primary cut
+        c_kms = 299792.458  # speed of light
+        
+        delv_cut = np.abs(catalog['z'] - catalog['z'][cut_primary[i_group]]) < 500./c_kms
+        mass_cut = catalog['mass_tot_mpajhu'] < np.log10(0.5) + catalog['mass_tot_mpajhu'][cut_primary[i_group]]
+        circle_cut = ((catalog['ra'] - catalog['ra'][cut_primary[i_group]])**2 + (catalog['dec'] - catalog['dec'][cut_primary[i_group]])**2) < theta**2
+        other_inside = list(np.where((group_ids == group_ids[cut_primary[i_group]]) & delv_cut & circle_cut & mass_cut)[0])
+
+        others.remove(cut_primary[i_group])
+        others.remove(central_index)
+        for inside in other_inside: 
+            others.remove(inside)
 
         others_size = 50.*(catalog['mass_tot_mpajhu'][others]-9.0)
-        sub.scatter(catalog['ra'][others], catalog['dec'][others], 
-                lw=0, c=pretty_colors[0], s=others_size, label='Group Members')
-        primary_size = 50.*(catalog['mass_tot_mpajhu'][cut_primary[i_group]]-9.0)
-        sub.scatter(catalog['ra'][cut_primary[i_group]], catalog['dec'][cut_primary[i_group]], 
-                lw=0, c=pretty_colors[3], s=primary_size, label='Primary')
-
-        # axes 
-        sub.set_xlabel('RA', fontsize=25)
-        sub.set_xlim([np.floor(catalog['ra'][others].min()), 
-            np.ceil(catalog['ra'][others].max())])
-        sub.set_xticks(range(int(np.floor(catalog['ra'][others].min())), 
-            int(np.ceil(catalog['ra'][others].max()))+1))
-        sub.set_ylabel('Dec', fontsize=25)
-        sub.set_ylim([np.floor(catalog['dec'][others].min()), 
-            np.ceil(catalog['dec'][others].max())])
-        sub.set_yticks(range(int(np.floor(catalog['dec'][others].min())), 
-            int(np.ceil(catalog['dec'][others].max()))+1))
-        sub.legend(markerscale=0.5, numpoints=1)
-        sub.minorticks_on() 
-        
-        str_primary_groupid = 'PrimaryAll'       # primary category 
-        if primary_groupid == 'centrals':   
-            str_primary_groupid = '.PrimaryCentral'
-        elif primary_groupid == 'pure_centrals': 
-            str_primary_groupid= '.PrimaryPureCentral'
-        elif primary_groupid == 'satellites': 
-            str_primary_groupid = '.PrimarySatellite'
-        if cat_dict['name'] == 'tinkauff': 
-            str_catalog = cat_dict['name']+'_'+str(cat_dict['Mass_cut'])
+        if ii == 0: 
+            sub.scatter(catalog['ra'][others], catalog['dec'][others], 
+                    lw=0, c=pretty_colors[0], s=others_size, label='Group Members')
         else: 
-            str_catalog = cat_dict['name']
+            sub.scatter(catalog['ra'][others], catalog['dec'][others], 
+                    lw=0, c=pretty_colors[0], s=others_size)
+        # central 
+        central_size = 50.*(catalog['mass_tot_mpajhu'][central_index]-9.0)
+        if ii == 0: 
+            sub.scatter(catalog['ra'][central_index], catalog['dec'][central_index], 
+                    lw=0, c='y', s=others_size, label='Central')
+        else: 
+            sub.scatter(catalog['ra'][central_index], catalog['dec'][central_index], 
+                    lw=0, c='y', s=others_size)
+        halo_circ = plt.Circle((catalog['ra'][central_index], catalog['dec'][central_index]), 
+            halo_radius, color=pretty_colors[0], fill=False, lw=2, linestyle='dashed') 
+        sub.add_patch(halo_circ)
 
-        fig_file = ''.join([UT.dir_fig(), 
-            'Group_of_primary', '.', str_catalog, 
-            concat_file_spec, str_primary_groupid, '.', primary_pipeline.upper(), 
-            str(ii), '.png']) 
-        fig.savefig(fig_file, bbox_inches='tight') 
-        plt.close()
+        primary_size = 50.*(catalog['mass_tot_mpajhu'][cut_primary[i_group]]-9.0)
+        if ii == 1: 
+            sub.scatter(catalog['ra'][cut_primary[i_group]], catalog['dec'][cut_primary[i_group]], 
+                    lw=0, c=pretty_colors[3], s=primary_size, label='Primary')
+        else: 
+            sub.scatter(catalog['ra'][cut_primary[i_group]], catalog['dec'][cut_primary[i_group]], 
+                    lw=0, c=pretty_colors[3], s=primary_size)
+        circ = plt.Circle((catalog['ra'][cut_primary[i_group]], catalog['dec'][cut_primary[i_group]]), theta, 
+                color=pretty_colors[3], fill=False, lw=2) 
+        sub.add_patch(circ)
+        
+        if len(other_inside) > 0:
+            other_inside_size = 50.*(catalog['mass_tot_mpajhu'][other_inside]-9.0)
+            sub.scatter(catalog['ra'][other_inside], catalog['dec'][other_inside], 
+                    lw=0, c='r', s=other_inside_size) 
+        
+        if ii == 1: 
+            sub.scatter([0], [0], lw=0, c='r', 
+                    label=r'$\mathtt{M_{gal} < \frac{1}{2} \; M_{primary}}$')
+
+        # x-axis 
+        #xaxis_mid = 0.5*(np.floor(catalog['ra'][others].min()) + np.ceil(catalog['ra'][others].max()))
+        #xaxis_wid = np.ceil(catalog['ra'][others].max()) - np.floor(catalog['ra'][others].min()) 
+        xaxis_mid = np.median(catalog['ra'][others]) 
+        #xaxis_mid = catalog['ra'][central_index]
+        #xaxis_wid = np.ceil(catalog['ra'][others].max() - catalog['ra'][others].min()) 
+        #yaxis_mid = 0.5*(np.floor(catalog['dec'][others].min()) + np.ceil(catalog['dec'][others].max()))
+        #yaxis_wid = np.ceil(catalog['dec'][others].max()) - np.floor(catalog['dec'][others].min()) 
+        #yaxis_mid = catalog['dec'][central_index]
+        yaxis_mid = np.median(catalog['dec'][others]) 
+        #yaxis_wid = np.ceil(catalog['dec'][others].max() - catalog['dec'][others].min()) 
+        #wid_max = np.max([xaxis_wid, yaxis_wid]) 
+
+        sub.set_xlim([np.floor(xaxis_mid - 0.5*wid_max), np.ceil(xaxis_mid + 0.5*wid_max)])
+        sub.set_xticks(range(int(np.floor(xaxis_mid - 0.5*wid_max)), int(np.ceil(xaxis_mid + 0.5*wid_max))+1))
+        # y-axis 
+        sub.set_ylim([np.floor(yaxis_mid - 0.5*wid_max), np.ceil(yaxis_mid + 0.5*wid_max)])
+        sub.set_yticks(range(int(np.floor(yaxis_mid - 0.5*wid_max)), int(np.ceil(yaxis_mid + 0.5*wid_max))+1))
+        #sub.set_yticks(range(int(yaxis_mid - 0.5*wid_max), int(yaxis_mid + 0.5*wid_max)+1))
+        #sub.set_yticks(range(int(np.floor(catalog['dec'][others].min())), 
+        #    int(np.ceil(catalog['dec'][others].max()))+1))
+
+        sub.text(int(np.floor(xaxis_mid - 0.5*wid_max)) + 0.3*wid_max, 
+                int(np.floor(yaxis_mid - 0.5*wid_max)) + 0.1*wid_max, 
+                '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
+        
+        sub.text(int(np.floor(xaxis_mid - 0.5*wid_max)) + 0.1*wid_max, 
+                int(np.ceil(yaxis_mid + 0.5*wid_max)) - 0.2*wid_max, 
+                'ID='+str(i_group), fontsize=20)
+        if ii in [0,1]: 
+            sub.legend(loc='best', markerscale=2, scatterpoints=1, handletextpad=0.1)
+        sub.minorticks_on() 
+
+    bkgd.set_xticklabels([]) 
+    bkgd.set_xlabel('RA', labelpad=10, fontsize=30) 
+    bkgd.set_yticklabels([]) 
+    bkgd.set_ylabel('Dec', labelpad=30, fontsize=30) 
+        
+    str_primary_groupid = 'PrimaryAll'       # primary category 
+    if primary_groupid == 'centrals':   
+        str_primary_groupid = '.PrimaryCentral'
+    elif primary_groupid == 'pure_centrals': 
+        str_primary_groupid= '.PrimaryPureCentral'
+    elif primary_groupid == 'satellites': 
+        str_primary_groupid = '.PrimarySatellite'
+    if cat_dict['name'] == 'tinkauff': 
+        str_catalog = cat_dict['name']+'_'+str(cat_dict['Mass_cut'])
+    else: 
+        str_catalog = cat_dict['name']
+    
+    fig_file = ''.join([UT.dir_fig(), 
+        'Group_of_primary', '.', str_catalog, 
+        concat_file_spec, str_primary_groupid, '.', primary_pipeline.upper(), 
+        '.png']) 
+    fig.savefig(fig_file, bbox_inches='tight') 
+    plt.close()
     return None 
 
 
@@ -1445,6 +1551,8 @@ def PrimaryIndices(catalog, pipeline='mpajhu', group_id='all', massbin=[10., 10.
         cut_group = (psat_primary <= 0.01) 
     elif group_id == 'satellites': # primaries within mass bin with SSFR that are *satellites*
         cut_group = (psat_primary > 0.5) 
+    elif group_id == 'not_pure_centrals': 
+        cut_group = (psat_primary > 0.01) 
     else: 
         print group_id
         raise ValueError
@@ -1509,11 +1617,11 @@ if __name__=='__main__':
     #    primary_pipeline='mpajhu', primary_groupid='pure_centrals', primary_massbin=[10., 10.5],
     #    neighbor_pipeline='mpajhu', neighbor_groupid='all', neighbor_massbin=None) 
     
-    Plot_PrimaryBins_massbin_SSFR_rperp({'name': 'tinkauff', 'Mass_cut': 10.0, 
-        'primary_delv': 500., 'primary_rperp': 0.5, 
-        'neighbor_delv': 500., 'neighbor_rperp': 5.},
-        primary_pipeline='mpajhu', primary_groupid='pure_centrals', primary_massbin=[10., 10.5],
-        neighbor_pipeline='mpajhu', neighbor_groupid='centrals', neighbor_massbin=[10., 10.5])
+    #Plot_PrimaryBins_massbin_SSFR_rperp({'name': 'tinkauff', 'Mass_cut': 10.0, 
+    #    'primary_delv': 500., 'primary_rperp': 0.5, 
+    #    'neighbor_delv': 500., 'neighbor_rperp': 5.},
+    #    primary_pipeline='mpajhu', primary_groupid='pure_centrals', primary_massbin=[10., 10.5],
+    #    neighbor_pipeline='mpajhu', neighbor_groupid='centrals', neighbor_massbin=[10., 10.5])
 
     #Plot_NeighborSSFR_rperp_PrimaryBins_zSubsample(
     #Plot_NeighborSSFR_rperp_PrimaryBins(
@@ -1526,7 +1634,8 @@ if __name__=='__main__':
     #Plot_NeighborSSFR_rperp_PrimaryBins({'name': 'tinkauff', 'Mass_cut': 9.25, 
     Plot_Primary_Groups({'name': 'tinkauff', 'Mass_cut': 9.25, 
                 'primary_delv': 500., 'primary_rperp': 0.5, 
-                'neighbor_delv': 500., 'neighbor_rperp': 5.}, primary_pipeline='mpajhu', primary_groupid='satellites', primary_massbin=[10., 10.5])
+                'neighbor_delv': 500., 'neighbor_rperp': 5.}, 
+                primary_pipeline='mpajhu', primary_groupid='satellites', primary_massbin=[10., 10.5])
     #Plot_NeighborSSFR_rperp_PrimaryBins({'name': 'tinkauff', 'Mass_cut': 10.0, 
     #            'primary_delv': 500., 'primary_rperp': 0.5, 
     #            'neighbor_delv': 500., 'neighbor_rperp': 5.}, 
