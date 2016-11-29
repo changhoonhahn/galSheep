@@ -424,8 +424,10 @@ def Plot_Primary_Groups(cat_dict, primary_pipeline='mpajhu', primary_groupid='al
         'clf_groups_JHU_M9.25_z0.017_fibcoll.groups']) 
     group_data = np.loadtxt(group_file, unpack=True, usecols=[1, 3]) 
     
-    rand_group_ids = np.random.choice(range(len(cut_primary)), len(cut_primary), replace=False) 
+    #rand_group_ids = np.random.choice(range(len(cut_primary)), len(cut_primary), replace=False) 
     #rand_group_ids = range(10)#range(len(cut_primary))
+    #rand_group_ids = [7, 8, 10, 12]
+    rand_group_ids = [14, 33, 52, 57]
     
     rand_group_id_list = []
     widths = [] 
@@ -528,25 +530,75 @@ def Plot_Primary_Groups(cat_dict, primary_pipeline='mpajhu', primary_groupid='al
         yaxis_mid = np.median(catalog['dec'][others]) 
         #yaxis_wid = np.ceil(catalog['dec'][others].max() - catalog['dec'][others].min()) 
         #wid_max = np.max([xaxis_wid, yaxis_wid]) 
-
-        sub.set_xlim([np.floor(xaxis_mid - 0.5*wid_max), np.ceil(xaxis_mid + 0.5*wid_max)])
-        sub.set_xticks(range(int(np.floor(xaxis_mid - 0.5*wid_max)), int(np.ceil(xaxis_mid + 0.5*wid_max))+1))
-        # y-axis 
-        sub.set_ylim([np.floor(yaxis_mid - 0.5*wid_max), np.ceil(yaxis_mid + 0.5*wid_max)])
-        sub.set_yticks(range(int(np.floor(yaxis_mid - 0.5*wid_max)), int(np.ceil(yaxis_mid + 0.5*wid_max))+1))
+        
+        if i_group in [7, 8, 10]: 
+            sub.set_xlim([179, 183])
+            sub.set_xticks([179, 180, 181, 182, 183])
+            sub.set_ylim([0, 4])
+            sub.set_yticks([0, 1, 2, 3, 4])
+            
+            sub.text(179.2, 0.2, '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
+            sub.text(182, 3.5, 'ID='+str(i_group), fontsize=20)
+            if ii in [0,1]: 
+                sub.legend(loc='upper left', markerscale=2, scatterpoints=1, handletextpad=0.1)
+        elif i_group in [12]: 
+            sub.set_xlim([40.3, 42.3])
+            sub.set_xticks([41, 42])
+            sub.set_ylim([-9.2, -7.2])
+            sub.set_yticks([-9, -8])
+            sub.text(40.4, -9.1, '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
+            sub.text(41.75, -7.4, 'ID='+str(i_group), fontsize=20)
+        elif i_group == 14: 
+            sub.set_xlim([218.5, 221.5])
+            sub.set_xticks([219, 220, 221])
+            sub.set_ylim([2, 5])
+            sub.set_yticks([2, 3, 4, 5])
+            sub.text(218.7, 2.2, '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
+            sub.text(220.9, 4.6, 'ID='+str(i_group), fontsize=20)
+            if ii in [0,1]: 
+                sub.legend(loc='upper left', markerscale=2, scatterpoints=1, handletextpad=0.1)
+        elif i_group == 33: 
+            sub.set_xlim([223., 225.4])
+            sub.set_xticks([223, 224, 225])
+            sub.set_ylim([8.2, 10.6])
+            sub.set_yticks([9, 10])
+            sub.text(223.2, 8.2, '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
+            sub.text(225., 10., 'ID='+str(i_group), fontsize=20)
+            if ii in [0,1]: 
+                sub.legend(loc='upper left', markerscale=2, scatterpoints=1, handletextpad=0.1)
+        elif i_group == 52: 
+            sub.set_xlim([199.8, 202.2])
+            sub.set_xticks([200, 201, 202])
+            sub.set_ylim([12.8, 15.2])
+            sub.set_yticks([13, 14, 15])
+            sub.text(200, 13., '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
+            sub.text(201.8, 14.8, 'ID='+str(i_group), fontsize=20)
+        elif i_group == 57: 
+            sub.set_xlim([243.4, 245.4])
+            sub.set_xticks([244, 245])
+            sub.set_ylim([34, 36])
+            sub.set_yticks([34, 35, 36])
+            sub.text(243.6, 34.2, '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
+            sub.text(244.8, 35.6, 'ID='+str(i_group), fontsize=20)
+        else: 
+            sub.set_xlim([np.floor(xaxis_mid - 0.5*wid_max), np.ceil(xaxis_mid + 0.5*wid_max)])
+            sub.set_xticks(range(int(np.floor(xaxis_mid - 0.5*wid_max)), int(np.ceil(xaxis_mid + 0.5*wid_max))+1))
+            # y-axis 
+            sub.set_ylim([np.floor(yaxis_mid - 0.5*wid_max), np.ceil(yaxis_mid + 0.5*wid_max)])
+            sub.set_yticks(range(int(np.floor(yaxis_mid - 0.5*wid_max)), int(np.ceil(yaxis_mid + 0.5*wid_max))+1))
         #sub.set_yticks(range(int(yaxis_mid - 0.5*wid_max), int(yaxis_mid + 0.5*wid_max)+1))
         #sub.set_yticks(range(int(np.floor(catalog['dec'][others].min())), 
         #    int(np.ceil(catalog['dec'][others].max()))+1))
 
-        sub.text(int(np.floor(xaxis_mid - 0.5*wid_max)) + 0.3*wid_max, 
-                int(np.floor(yaxis_mid - 0.5*wid_max)) + 0.1*wid_max, 
-                '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
-        
-        sub.text(int(np.floor(xaxis_mid - 0.5*wid_max)) + 0.1*wid_max, 
-                int(np.ceil(yaxis_mid + 0.5*wid_max)) - 0.2*wid_max, 
-                'ID='+str(i_group), fontsize=20)
-        if ii in [0,1]: 
-            sub.legend(loc='best', markerscale=2, scatterpoints=1, handletextpad=0.1)
+            sub.text(int(np.floor(xaxis_mid - 0.5*wid_max)) + 0.3*wid_max, 
+                    int(np.floor(yaxis_mid - 0.5*wid_max)) + 0.1*wid_max, 
+                    '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
+            
+            sub.text(int(np.floor(xaxis_mid - 0.5*wid_max)) + 0.1*wid_max, 
+                    int(np.ceil(yaxis_mid + 0.5*wid_max)) - 0.2*wid_max, 
+                    'ID='+str(i_group), fontsize=20)
+            if ii in [0,1]: 
+                sub.legend(loc='best', markerscale=2, scatterpoints=1, handletextpad=0.1)
         sub.minorticks_on() 
 
     bkgd.set_xticklabels([]) 
