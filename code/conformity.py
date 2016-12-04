@@ -426,8 +426,7 @@ def Plot_Primary_Groups(cat_dict, primary_pipeline='mpajhu', primary_groupid='al
     
     #rand_group_ids = np.random.choice(range(len(cut_primary)), len(cut_primary), replace=False) 
     #rand_group_ids = range(10)#range(len(cut_primary))
-    #rand_group_ids = [7, 8, 10, 12]
-    rand_group_ids = [14, 33, 52, 57]
+    rand_group_ids = [8, 12, 33, 14]
     
     rand_group_id_list = []
     widths = [] 
@@ -474,6 +473,15 @@ def Plot_Primary_Groups(cat_dict, primary_pipeline='mpajhu', primary_groupid='al
         circle_cut = ((catalog['ra'] - catalog['ra'][cut_primary[i_group]])**2 + (catalog['dec'] - catalog['dec'][cut_primary[i_group]])**2) < theta**2
         other_inside = list(np.where((group_ids == group_ids[cut_primary[i_group]]) & delv_cut & circle_cut & mass_cut)[0])
 
+        inside_circle_but_outside = np.where(
+                (group_ids == group_ids[cut_primary[i_group]]) & circle_cut & mass_cut & 
+                (np.abs(catalog['z'] - catalog['z'][cut_primary[i_group]]) >= 500./c_kms))
+
+        if len(inside_circle_but_outside[0]) > 0: 
+            print 'primary', catalog['z'][cut_primary[i_group]] # >= 500./c_kms))
+            print catalog['z'][inside_circle_but_outside] 
+            print c_kms * (catalog['z'][cut_primary[i_group]] - catalog['z'][inside_circle_but_outside]) 
+
         others.remove(cut_primary[i_group])
         others.remove(central_index)
         for inside in other_inside: 
@@ -482,10 +490,10 @@ def Plot_Primary_Groups(cat_dict, primary_pipeline='mpajhu', primary_groupid='al
         others_size = 50.*(catalog['mass_tot_mpajhu'][others]-9.0)
         if ii == 0: 
             sub.scatter(catalog['ra'][others], catalog['dec'][others], 
-                    lw=0, c=pretty_colors[0], s=others_size, label='Group Members')
+                    lw=0, c='k', alpha=0.7, s=others_size, label='Group Members')
         else: 
             sub.scatter(catalog['ra'][others], catalog['dec'][others], 
-                    lw=0, c=pretty_colors[0], s=others_size)
+                    lw=0, c='k', alpha=0.7, s=others_size)
         # central 
         central_size = 50.*(catalog['mass_tot_mpajhu'][central_index]-9.0)
         if ii == 0: 
@@ -531,74 +539,60 @@ def Plot_Primary_Groups(cat_dict, primary_pipeline='mpajhu', primary_groupid='al
         #yaxis_wid = np.ceil(catalog['dec'][others].max() - catalog['dec'][others].min()) 
         #wid_max = np.max([xaxis_wid, yaxis_wid]) 
         
+        sub.text(0.4, 0.08, '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), 
+                fontsize=25, ha='center', va='center', transform=sub.transAxes) 
         if i_group in [7, 8, 10]: 
-            sub.set_xlim([179, 183])
-            sub.set_xticks([179, 180, 181, 182, 183])
+            sub.set_xlim([179.2, 183.2])
+            sub.set_xticks([180, 181, 182, 183])
             sub.set_ylim([0, 4])
             sub.set_yticks([0, 1, 2, 3, 4])
             
-            sub.text(179.2, 0.2, '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
-            sub.text(182, 3.5, 'ID='+str(i_group), fontsize=20)
-            if ii in [0,1]: 
-                sub.legend(loc='upper left', markerscale=2, scatterpoints=1, handletextpad=0.1)
+            #sub.text(179.2, 0.2, '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
+            #sub.text(182, 3.5, 'ID='+str(i_group), fontsize=20)
         elif i_group in [12]: 
-            sub.set_xlim([40.3, 42.3])
+            sub.set_xlim([40.4, 42.4])
             sub.set_xticks([41, 42])
-            sub.set_ylim([-9.2, -7.2])
+            sub.set_ylim([-9.1, -7.1])
             sub.set_yticks([-9, -8])
-            sub.text(40.4, -9.1, '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
-            sub.text(41.75, -7.4, 'ID='+str(i_group), fontsize=20)
+            #sub.text(40.4, -9.1, '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
+            #sub.text(41.75, -7.4, 'ID='+str(i_group), fontsize=20)
         elif i_group == 14: 
             sub.set_xlim([218.5, 221.5])
             sub.set_xticks([219, 220, 221])
             sub.set_ylim([2, 5])
             sub.set_yticks([2, 3, 4, 5])
-            sub.text(218.7, 2.2, '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
-            sub.text(220.9, 4.6, 'ID='+str(i_group), fontsize=20)
-            if ii in [0,1]: 
-                sub.legend(loc='upper left', markerscale=2, scatterpoints=1, handletextpad=0.1)
+            #sub.text(218.7, 2.2, '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
+            #sub.text(220.9, 4.6, 'ID='+str(i_group), fontsize=20)
         elif i_group == 33: 
             sub.set_xlim([223., 225.4])
             sub.set_xticks([223, 224, 225])
             sub.set_ylim([8.2, 10.6])
             sub.set_yticks([9, 10])
-            sub.text(223.2, 8.2, '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
-            sub.text(225., 10., 'ID='+str(i_group), fontsize=20)
-            if ii in [0,1]: 
-                sub.legend(loc='upper left', markerscale=2, scatterpoints=1, handletextpad=0.1)
+            #sub.text(223.2, 8.2, '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
+            #sub.text(225., 10., 'ID='+str(i_group), fontsize=20)
         elif i_group == 52: 
             sub.set_xlim([199.8, 202.2])
             sub.set_xticks([200, 201, 202])
             sub.set_ylim([12.8, 15.2])
             sub.set_yticks([13, 14, 15])
-            sub.text(200, 13., '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
-            sub.text(201.8, 14.8, 'ID='+str(i_group), fontsize=20)
+            #sub.text(200, 13., '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
+            #sub.text(201.8, 14.8, 'ID='+str(i_group), fontsize=20)
         elif i_group == 57: 
             sub.set_xlim([243.4, 245.4])
             sub.set_xticks([244, 245])
             sub.set_ylim([34, 36])
             sub.set_yticks([34, 35, 36])
-            sub.text(243.6, 34.2, '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
-            sub.text(244.8, 35.6, 'ID='+str(i_group), fontsize=20)
+            #sub.text(243.6, 34.2, '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
+            #sub.text(244.8, 35.6, 'ID='+str(i_group), fontsize=20)
         else: 
             sub.set_xlim([np.floor(xaxis_mid - 0.5*wid_max), np.ceil(xaxis_mid + 0.5*wid_max)])
             sub.set_xticks(range(int(np.floor(xaxis_mid - 0.5*wid_max)), int(np.ceil(xaxis_mid + 0.5*wid_max))+1))
             # y-axis 
             sub.set_ylim([np.floor(yaxis_mid - 0.5*wid_max), np.ceil(yaxis_mid + 0.5*wid_max)])
             sub.set_yticks(range(int(np.floor(yaxis_mid - 0.5*wid_max)), int(np.ceil(yaxis_mid + 0.5*wid_max))+1))
-        #sub.set_yticks(range(int(yaxis_mid - 0.5*wid_max), int(yaxis_mid + 0.5*wid_max)+1))
-        #sub.set_yticks(range(int(np.floor(catalog['dec'][others].min())), 
-        #    int(np.ceil(catalog['dec'][others].max()))+1))
 
-            sub.text(int(np.floor(xaxis_mid - 0.5*wid_max)) + 0.3*wid_max, 
-                    int(np.floor(yaxis_mid - 0.5*wid_max)) + 0.1*wid_max, 
-                    '$\mathtt{log\; M_{group} = }$'+str(round(np.log10(M_group),1)), fontsize=25)
-            
-            sub.text(int(np.floor(xaxis_mid - 0.5*wid_max)) + 0.1*wid_max, 
-                    int(np.ceil(yaxis_mid + 0.5*wid_max)) - 0.2*wid_max, 
-                    'ID='+str(i_group), fontsize=20)
-            if ii in [0,1]: 
-                sub.legend(loc='best', markerscale=2, scatterpoints=1, handletextpad=0.1)
+        if ii in [0,1]: 
+            sub.legend(loc='upper left', markerscale=2, scatterpoints=1, handletextpad=0.1)
         sub.minorticks_on() 
 
     bkgd.set_xticklabels([]) 
@@ -618,11 +612,17 @@ def Plot_Primary_Groups(cat_dict, primary_pipeline='mpajhu', primary_groupid='al
     else: 
         str_catalog = cat_dict['name']
     
+    #fig_file = ''.join([UT.dir_fig(), 
+    #    'Group_of_primary', '.', str_catalog, 
+    #    concat_file_spec, str_primary_groupid, '.', primary_pipeline.upper(), 
+    #    '.png']) 
+    #fig.savefig(fig_file, bbox_inches='tight') 
+    
     fig_file = ''.join([UT.dir_fig(), 
         'Group_of_primary', '.', str_catalog, 
         concat_file_spec, str_primary_groupid, '.', primary_pipeline.upper(), 
-        '.png']) 
-    fig.savefig(fig_file, bbox_inches='tight') 
+        '.ps']) 
+    fig.savefig(fig_file, format='ps', papertype='letter', orientation='landscape') 
     plt.close()
     return None 
 
