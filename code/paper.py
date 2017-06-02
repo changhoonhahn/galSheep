@@ -353,14 +353,12 @@ def Fig_forTinker_NeighborSSFR_rperp_PrimaryBins():
     bkgd.set_xlabel(r'$\mathtt{R_{\perp}}$ [Mpc]', labelpad=20, fontsize=30) 
     bkgd.set_yticklabels([]) 
     bkgd.set_ylabel(''.join([
-        r'median log($\mathtt{SSFR_{(neigh)}^{(', 
-        label_ssfr_neigh, 
-        ')}}$ [$\mathtt{yr}^{-1}$])']), 
+        r'log($\mathtt{SSFR^{(fib)}}$ [$\mathtt{yr}^{-1}$])']), 
         labelpad=30, fontsize=30) 
     fig.subplots_adjust(wspace=0., hspace=0.)
     
     fig_file = ''.join([UT.dir_fig(), 
-        'forTinker_neighborSSFR_rprep_primarybins', concat_file_spec, '.png']) 
+        'forTinker_neighborSSFR_rprep_primarybins', concat_file_spec, '.pdf']) 
     fig.savefig(fig_file, bbox_inches='tight') 
     plt.close()
     return None 

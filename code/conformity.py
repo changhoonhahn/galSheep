@@ -621,8 +621,8 @@ def Plot_Primary_Groups(cat_dict, primary_pipeline='mpajhu', primary_groupid='al
     fig_file = ''.join([UT.dir_fig(), 
         'Group_of_primary', '.', str_catalog, 
         concat_file_spec, str_primary_groupid, '.', primary_pipeline.upper(), 
-        '.ps']) 
-    fig.savefig(fig_file, format='ps', papertype='letter', orientation='landscape') 
+        '.pdf']) 
+    fig.savefig(fig_file, bbox_inches='tight') 
     plt.close()
     return None 
 
