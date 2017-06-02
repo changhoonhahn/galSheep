@@ -28,6 +28,8 @@ class ConformCatalog(object):
             self.M_cut = Tinker_Masscut(self.Mrcut) # mass cut
         elif self.catalog_name == 'tinkauff': 
             self.M_cut = catalog_prop['Mass_cut']
+        elif self.catalog_name == 'tinkauff_iso': 
+            self.M_cut = catalog_prop['Mass_cut']
         elif self.catalog_name == 'kauff': 
             pass
     
@@ -181,11 +183,15 @@ class ConformCatalog(object):
             for key in mpajhu_neighbor_info.key(): 
                 catalog[key+'_vagc'] = mpajhu_neighbor_info[key]
 
-        elif self.catalog_name in ['tinkauff', 'kauff']: 
+        elif self.catalog_name in ['tinkauff', 'tinkauff_iso', 'kauff']: 
             if self.catalog_name == 'tinkauff':
                 if clobber: 
                     Build_TinKauffGroupCat(Mass_cut=self.M_cut)
                 catalog = TinKauffGroupCat(Mass_cut=self.M_cut)
+            elif self.catalog_name == 'tinkauff_iso':
+                if clobber: 
+                    Build_TinKauff_IsolationGroupCat(Mass_cut=self.M_cut)
+                catalog = TinKauff_IsolationGroupCat(Mass_cut=self.M_cut)
             elif self.catalog_name == 'kauff': 
                 if clobber: 
                     Build_KauffmannParent()
@@ -219,10 +225,17 @@ class ConformCatalog(object):
                 UT.dir_dat(), 'conform_catalog/',
                 'VAGCdr72brigh34_MPAJHU.GroupCat.Mass', str(self.M_cut), 
                 self._FileSpec(), '.p']) 
+        elif self.catalog_name == 'tinkauff_iso':
+            conform_file = ''.join([
+                UT.dir_dat(), 'conform_catalog/',
+                'VAGCdr72brigh34_MPAJHU.IsoGroupCat.Mass', str(self.M_cut), 
+                self._FileSpec(), '.p']) 
         elif self.catalog_name == 'kauff':
             conform_file = ''.join([
                 UT.dir_dat(), 'conform_catalog/',
                 'VAGCdr72brigh34_MPAJHU.Kauffmann', self._FileSpec(), '.p']) 
+        else: 
+            raise ValueError
 
         return conform_file 
 
@@ -969,6 +982,74 @@ def Build_TinKauffGroupCat(Mass_cut=9.25):
 
     tinkauff_file = ''.join([UT.dir_dat(), 'tinkauff/',
         'VAGCdr72_MPAJHU.GroupCat.Mass', str(Mass_cut), '.hdf5']) 
+    f = h5py.File(tinkauff_file, 'w')
+    grp = f.create_group('data')
+    
+    for column in catalog.keys(): 
+        grp.create_dataset(column, data=catalog[column])
+    f.close()
+    return None
+
+
+def TinKauff_IsolationGroupCat(Mass_cut=9.25): 
+    ''' Read in the Tinker-Kauffmann Group catalog generated from VAGC 
+    dr72bright34 with MPA-JHU galaxy property values. Group catalog is 
+    generated from Jeremy's new isolation criteria group catalog
+    '''
+    dr72_file = ''.join([UT.dir_dat(), '/tinkauff/',
+        'VAGCdr72_MPAJHU.IsoGroupCat.Mass', str(Mass_cut), '.hdf5']) 
+    catalog = {} 
+    f = h5py.File(dr72_file, 'r')
+    grp = f['data']
+    for col in grp.keys(): 
+        catalog[col] = grp[col].value  
+    f.close() 
+    return catalog
+
+
+def Build_TinKauff_IsolationGroupCat(Mass_cut=9.25): 
+    ''' Compile the outputs of Jeremy's new isolation criteria Group 
+    Catalog algorithm in order to generate catalogs analogous to Kauffmann et al.(2013). 
+    Hence TinKauff. 
+    ''' 
+    # galdata_corr file 
+    galdata_file = ''.join([UT.dir_dat(), 'tinkauff/', 
+        'clf_groups_JHU_M', str(Mass_cut), '_z0.017_fibcoll.galdata_corr'])
+    gal_data = np.loadtxt(galdata_file, unpack=True, usecols=range(1,14))
+
+    catalog = {
+            'id': gal_data[0], 
+            'ra': gal_data[5] * 57.2957795, 
+            'dec': gal_data[6] * 57.2957795,
+            'M_r': gal_data[1], 
+            'M_g': gal_data[2],
+            'z': gal_data[3]/299792.458,
+            'mass_tot_mpajhu': np.log10(gal_data[4]), 
+            'Dn4000': gal_data[7], 
+            'ssfr_tot_mpajhu': gal_data[8], 
+            'ssfr_fib_mpajhu': gal_data[9], 
+            'sfr_tot_mpajhu': gal_data[10], 
+            'sfr_fib_mpajhu': gal_data[11], 
+            'mass_fib_mpajhu': gal_data[12], 
+            } 
+
+    # prob data from Jeremy's new isolation criteria group catalog
+    prob_file = ''.join([UT.dir_dat(), 'tinkauff/', 
+        'clf_groups_JHU_M', str(Mass_cut), '_z0.017_fibcoll.isolation.prob'])
+    prob_data = np.loadtxt(prob_file, unpack=True, usecols=[0]) 
+    catalog['p_sat'] = prob_data
+
+    # cuts 
+    if catalog['ssfr_tot_mpajhu'].min() == -999.: 
+        N_cat = len(catalog['p_sat']) 
+        nan_cuts = np.where(catalog['ssfr_tot_mpajhu'] != -999.) 
+        for key in catalog.keys(): 
+            catalog[key] = catalog[key][nan_cuts]
+        
+        print 'removed = ', N_cat - len(catalog['p_sat']) 
+
+    tinkauff_file = ''.join([UT.dir_dat(), 'tinkauff/',
+        'VAGCdr72_MPAJHU.IsoGroupCat.Mass', str(Mass_cut), '.hdf5']) 
     f = h5py.File(tinkauff_file, 'w')
     grp = f.create_group('data')
     

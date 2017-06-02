@@ -301,7 +301,8 @@ def MPAJHU_Tinker(Mrcut=18):
 
 if __name__=='__main__': 
     #clog.Build_VAGCdr72_MPAJHU(Ascii=True)
-    clog.Build_TinKauffGroupCat(Mass_cut=9.25)
+    #clog.Build_TinKauffGroupCat(Mass_cut=9.25)
+    #clog.Build_TinKauff_IsolationGroupCat(Mass_cut=9.25)
     #clog.Build_TinKauffGroupCat(Mass_cut=10.0)
     #Test_KauffmannParent_Pssfr()
     #for n in [1, 8, 10, 22]:
@@ -315,10 +316,11 @@ if __name__=='__main__':
     #Test_KauffTink_PrimaryIdentification(Mrcut=18, del_v_cut=500., r_perp_cut=0.5)
     #clog.Build_TinkerCatalog(Mrcut=18)
     #clog.Build_MPAJHU_TinkerCatalog(Mrcut=18)
-    for delv in [500.]:#[1000., 1500., 2000.]: #[500.]: #
+    for delv in [500., 1000., 1500., 2000.]:
         #tink_concat = clog.ConformCatalog('kauff',  
         #tink_concat = clog.ConformCatalog('tinkauff', catalog_prop={'Mass_cut': 10.0}, 
-        tink_concat = clog.ConformCatalog('tinkauff', catalog_prop={'Mass_cut': 9.25}, 
+        #tink_concat = clog.ConformCatalog('tinkauff', catalog_prop={'Mass_cut': 9.25}, 
+        tink_concat = clog.ConformCatalog('tinkauff_iso', catalog_prop={'Mass_cut': 9.25}, 
                 primary_delv=500., primary_rperp=0.5, 
                 neighbor_delv=delv, neighbor_rperp=5.)
         tink_concat.Build() 
