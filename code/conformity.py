@@ -154,6 +154,9 @@ def zSubsample_NeighborSSFR_rperp_PrimaryBins(catalog, lowhigh,
                 cut_groupid = (neigh_psat <= 0.5)
             elif neighbor_groupid == 'pure_centrals': # *pure central* neighbors 
                 cut_groupid = (neigh_psat <= 0.01)
+            elif neighbor_groupid == 'pure_centrals_iso': # *pure central* neighbors for isolation criteria
+                # this is Jeremy's new isolation based group catalog (6/2/17) 
+                cut_groupid = (neigh_psat <= 0.1)
             else: 
                 raise ValueError
             if neighbor_massbin is None: 
@@ -1601,10 +1604,14 @@ def PrimaryIndices(catalog, pipeline='mpajhu', group_id='all', massbin=[10., 10.
         cut_group = (psat_primary <= 0.5) 
     elif group_id == 'pure_centrals':  # pure *central* primaries
         cut_group = (psat_primary <= 0.01) 
+    elif group_id == 'pure_centrals_iso':  # pure *central* primaries
+        cut_group = (psat_primary <= 0.1) 
     elif group_id == 'satellites': # primaries within mass bin with SSFR that are *satellites*
         cut_group = (psat_primary > 0.5) 
     elif group_id == 'not_pure_centrals': 
         cut_group = (psat_primary > 0.01) 
+    elif group_id == 'not_pure_centrals_iso': 
+        cut_group = (psat_primary > 0.1) 
     else: 
         print group_id
         raise ValueError
