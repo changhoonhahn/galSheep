@@ -1479,7 +1479,7 @@ def Fig_forTinkerReview_NeighborSSFR_rperp_PrimaryBins():
                     c=pretty_colors[i_ssfr], lw=2, ls='--') 
 
     ssfrplots = []
-    for i_ssfr, ssfrs_rperp in enumerate(neighSSFR_rperp_primarybins):
+    for i_ssfr, ssfrs_rperp in enumerate(neighSSFR_rperp_primarybins[:-1]):
         ssfr_tot = np.array([np.median(ssfrs) for ssfrs in ssfrs_rperp]) 
         ssfrplot, = sub.plot(0.5*(rperp_bins[:-1]+rperp_bins[1:]), ssfr_tot, 
                 c=pretty_colors[i_ssfr], lw=3, ls='-', label=primary_SSFRbin_label[i_ssfr]) 
