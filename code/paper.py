@@ -1503,6 +1503,8 @@ def Fig_forTinkerReview_NeighborSSFR_rperp_PrimaryBins():
     sub.legend(handles=ssfrplots, loc='lower right', ncol=2, handletextpad=0.2) 
     plt.gca().add_artist(kleg)
 
+    ax = plt.gca()
+    ax.get_yaxis().set_tick_params(which='both', direction='in')
 
     label_pipe = 'tot; mpajhu'
     label_ssfr_neigh = 'fib; mpajhu'
